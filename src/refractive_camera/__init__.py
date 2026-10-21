@@ -12,6 +12,7 @@ windows", arXiv:2610.17413 (2026).
     >>> images.uv, images.branch
 """
 from .camera import Camera
+from .flat import FlatWindow
 from .projection import Images, available_backends, project
 from .render import render_dots
 from .tracing import Trace, back_project, trace
@@ -20,5 +21,5 @@ from .windows import CylindricalWindow, SphericalWindow
 
 __version__ = "0.1.0.dev0"
 
-__all__ = ["Camera", "CylindricalWindow", "SphericalWindow", "Images", "Trace", "available_backends",
+__all__ = ["Camera", "CylindricalWindow", "SphericalWindow", "FlatWindow", "Images", "Trace", "available_backends",
            "back_project", "project", "render_dots", "trace", "triangulate", "__version__"]

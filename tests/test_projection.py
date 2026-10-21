@@ -53,8 +53,10 @@ def test_backends_agree(kind):
     a = rc.project(X, cam, window, backend="cpp")
     b = rc.project(X, cam, window, backend="python")
     assert np.array_equal(a.counts(on_sensor=False), b.counts(on_sensor=False))
-    assert np.array_equal(a.point, b.point) and np.array_equal(a.branch, b.branch)
-    np.testing.assert_allclose(a.uv, b.uv, atol=1e-6)
+    # the order of a point's rays is not part of the result: compare them sorted
+    oa, ob = (np.lexsort((im.lam, im.branch, im.point)) for im in (a, b))
+    assert np.array_equal(a.point[oa], b.point[ob]) and np.array_equal(a.branch[oa], b.branch[ob])
+    np.testing.assert_allclose(a.uv[oa], b.uv[ob], atol=1e-6)
 
 
 def test_results_do_not_depend_on_unit_or_frame(kind):

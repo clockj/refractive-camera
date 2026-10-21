@@ -1,0 +1,769 @@
+{
+ "machine": {
+  "cpu": "13th Gen Intel(R) Core(TM) i9-13900K",
+  "os": "Windows-10-10.0.26200-SP0",
+  "python": "3.11.16",
+  "numpy": "2.4.6",
+  "backends": [
+   "cpp",
+   "python"
+  ],
+  "compiled_core": "_core.cp311-win_amd64.pyd"
+ },
+ "settings": {
+  "truth_tol_rel": 1e-09,
+  "afrt_accept_m": 1e-09,
+  "same_ray_rad": 1e-07,
+  "grid": [
+   600,
+   400
+  ],
+  "sizes": {
+   "uniform": 500,
+   "steep": 100,
+   "band": 100,
+   "edge": 100,
+   "axis": 100
+  },
+  "truth_sizes": {
+   "uniform": 150,
+   "steep": 100,
+   "band": 100,
+   "edge": 100,
+   "axis": 100
+  },
+  "python_points": 40
+ },
+ "results": {
+  "cylinder": {
+   "sets": {
+    "uniform": {
+     "points": 500,
+     "scored": 150,
+     "true_image_counts": {
+      "0": 13,
+      "1": 137
+     },
+     "ours": {
+      "outcomes_pct": {
+       "every image": 91.33333333333333,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 8.666666666666666
+      },
+      "time": {
+       "median_us": 310.2499758824706,
+       "p95_us": 835.05007205531,
+       "n": 500
+      },
+      "capped": 0,
+      "rings": 0,
+      "landing_m": {
+       "median": 2.2886683523971124e-17,
+       "max": 1.0956892494304868e-15,
+       "n": 137
+      }
+     },
+     "ours_core": {
+      "time": {
+       "median_us": 127.94992653653026,
+       "p95_us": 637.8149671945718,
+       "n": 500
+      }
+     },
+     "ours_python": {
+      "time": {
+       "median_us": 21110.199973918498,
+       "p95_us": 148443.93491512156,
+       "n": 40
+      },
+      "same_as_compiled": 40,
+      "of": 40
+     },
+     "afrt": {
+      "outcomes_pct": {
+       "every image": 91.33333333333333,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 8.666666666666666
+      },
+      "time": {
+       "median_us": 87.90002902969718,
+       "p95_us": 171.53990920633066,
+       "n": 500
+      },
+      "landing_m": {
+       "median": 6.280588611911162e-10,
+       "max": 9.484457835959545e-10,
+       "n": 137
+      },
+      "status_on_scored": {
+       "converged": 137,
+       "cap": 0,
+       "breakdown": 13
+      }
+     }
+    },
+    "steep": {
+     "points": 100,
+     "scored": 100,
+     "true_image_counts": {
+      "0": 14,
+      "1": 82,
+      "2": 4
+     },
+     "ours": {
+      "outcomes_pct": {
+       "every image": 86.0,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 14.0
+      },
+      "time": {
+       "median_us": 398.6000083386898,
+       "p95_us": 850.8700702805072,
+       "n": 100
+      },
+      "capped": 0,
+      "rings": 0,
+      "landing_m": {
+       "median": 8.73731248702867e-17,
+       "max": 3.2502997894055125e-15,
+       "n": 90
+      }
+     },
+     "ours_core": {
+      "time": {
+       "median_us": 294.3000290542841,
+       "p95_us": 697.3699550144374,
+       "n": 100
+      }
+     },
+     "ours_python": {
+      "time": {
+       "median_us": 79929.65000448748,
+       "p95_us": 165951.99503935874,
+       "n": 40
+      },
+      "same_as_compiled": 40,
+      "of": 40
+     },
+     "afrt": {
+      "outcomes_pct": {
+       "every image": 82.0,
+       "some images": 4.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 14.0
+      },
+      "time": {
+       "median_us": 121.29999231547117,
+       "p95_us": 328.6199353169649,
+       "n": 100
+      },
+      "landing_m": {
+       "median": 6.922670477649501e-10,
+       "max": 9.709913954576634e-10,
+       "n": 86
+      },
+      "status_on_scored": {
+       "converged": 86,
+       "cap": 0,
+       "breakdown": 14
+      }
+     }
+    },
+    "band": {
+     "points": 100,
+     "scored": 100,
+     "true_image_counts": {
+      "2": 100
+     },
+     "ours": {
+      "outcomes_pct": {
+       "every image": 100.0,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 0.0
+      },
+      "time": {
+       "median_us": 207.60000916197896,
+       "p95_us": 305.93999545089895,
+       "n": 100
+      },
+      "capped": 0,
+      "rings": 0,
+      "landing_m": {
+       "median": 1.020719913979826e-16,
+       "max": 2.1649055518207305e-14,
+       "n": 200
+      }
+     },
+     "ours_core": {
+      "time": {
+       "median_us": 108.70001278817654,
+       "p95_us": 226.87998134642837,
+       "n": 100
+      }
+     },
+     "ours_python": {
+      "time": {
+       "median_us": 21444.599959068,
+       "p95_us": 36797.38001665099,
+       "n": 40
+      },
+      "same_as_compiled": 40,
+      "of": 40
+     },
+     "afrt": {
+      "outcomes_pct": {
+       "every image": 0.0,
+       "some images": 100.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 0.0
+      },
+      "time": {
+       "median_us": 405.50000267103314,
+       "p95_us": 1586.8600632529703,
+       "n": 100
+      },
+      "landing_m": {
+       "median": 6.572187248561619e-10,
+       "max": 8.025372320285913e-10,
+       "n": 100
+      },
+      "status_on_scored": {
+       "converged": 100,
+       "cap": 0,
+       "breakdown": 0
+      }
+     }
+    },
+    "edge": {
+     "points": 100,
+     "scored": 100,
+     "true_image_counts": {
+      "0": 58,
+      "2": 42
+     },
+     "ours": {
+      "outcomes_pct": {
+       "every image": 42.0,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 58.0
+      },
+      "time": {
+       "median_us": 180.0000318326056,
+       "p95_us": 330.4250654764473,
+       "n": 100
+      },
+      "capped": 0,
+      "rings": 0,
+      "landing_m": {
+       "median": 1.0620077527094728e-16,
+       "max": 8.625902176957213e-12,
+       "n": 84
+      }
+     },
+     "ours_core": {
+      "time": {
+       "median_us": 82.74998981505632,
+       "p95_us": 180.26996986009175,
+       "n": 100
+      }
+     },
+     "ours_python": {
+      "time": {
+       "median_us": 13867.90000833571,
+       "p95_us": 28451.079939259205,
+       "n": 40
+      },
+      "same_as_compiled": 40,
+      "of": 40
+     },
+     "afrt": {
+      "outcomes_pct": {
+       "every image": 0.0,
+       "some images": 42.0,
+       "no answer": 0.0,
+       "false image": 1.0,
+       "correct empty": 57.0
+      },
+      "time": {
+       "median_us": 221.800000872463,
+       "p95_us": 2266.959921689704,
+       "n": 100
+      },
+      "landing_m": {
+       "median": 6.282464886493801e-10,
+       "max": 8.419160770737466e-10,
+       "n": 42
+      },
+      "status_on_scored": {
+       "converged": 42,
+       "cap": 1,
+       "breakdown": 57
+      }
+     }
+    },
+    "axis": {
+     "points": 100,
+     "scored": 100,
+     "true_image_counts": {
+      "1": 100
+     },
+     "ours": {
+      "outcomes_pct": {
+       "every image": 100.0,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 0.0
+      },
+      "time": {
+       "median_us": 114.75000064820051,
+       "p95_us": 498.9399574697017,
+       "n": 100
+      },
+      "capped": 0,
+      "rings": 0,
+      "landing_m": {
+       "median": 1.408370136731138e-17,
+       "max": 5.551433413100433e-17,
+       "n": 100
+      }
+     },
+     "ours_core": {
+      "time": {
+       "median_us": 93.05001003667712,
+       "p95_us": 499.3700364138928,
+       "n": 100
+      }
+     },
+     "ours_python": {
+      "time": {
+       "median_us": 15108.900028280914,
+       "p95_us": 162847.96005929817,
+       "n": 40
+      },
+      "same_as_compiled": 40,
+      "of": 40
+     },
+     "afrt": {
+      "outcomes_pct": {
+       "every image": 100.0,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 0.0
+      },
+      "time": {
+       "median_us": 126.89997674897313,
+       "p95_us": 136.00498787127435,
+       "n": 100
+      },
+      "landing_m": {
+       "median": 6.514386783881224e-10,
+       "max": 9.848077907917753e-10,
+       "n": 100
+      },
+      "status_on_scored": {
+       "converged": 100,
+       "cap": 0,
+       "breakdown": 0
+      }
+     }
+    }
+   },
+   "batch_us_per_point_1_threads": 153.60588893397815,
+   "batch_us_per_point_all_threads": 27.79033332545724,
+   "machine_cpu_load_pct": {
+    "samples": [
+     77.0,
+     82.0,
+     73.0,
+     77.0,
+     69.0,
+     76.0
+    ],
+    "mean": 75.66666666666667,
+    "max": 82.0
+   },
+   "disagreements_with_truth": [],
+   "seconds": 313.24938050005585
+  },
+  "sphere": {
+   "sets": {
+    "uniform": {
+     "points": 500,
+     "scored": 150,
+     "true_image_counts": {
+      "0": 29,
+      "1": 117,
+      "2": 4
+     },
+     "ours": {
+      "outcomes_pct": {
+       "every image": 80.66666666666667,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 19.333333333333332
+      },
+      "time": {
+       "median_us": 245.3500055707991,
+       "p95_us": 628.6800140514969,
+       "n": 500
+      },
+      "capped": 0,
+      "rings": 0,
+      "landing_m": {
+       "median": 1.904742965435995e-17,
+       "max": 3.202648943147623e-14,
+       "n": 125
+      }
+     },
+     "ours_core": {
+      "time": {
+       "median_us": 123.50000906735659,
+       "p95_us": 442.58499401621515,
+       "n": 500
+      }
+     },
+     "ours_python": {
+      "time": {
+       "median_us": 5995.400017127395,
+       "p95_us": 14192.559960065408,
+       "n": 40
+      },
+      "same_as_compiled": 40,
+      "of": 40
+     },
+     "afrt": {
+      "outcomes_pct": {
+       "every image": 78.0,
+       "some images": 2.6666666666666665,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 19.333333333333332
+      },
+      "time": {
+       "median_us": 191.20000069960952,
+       "p95_us": 436.01506040431536,
+       "n": 500
+      },
+      "landing_m": {
+       "median": 5.93833981115854e-10,
+       "max": 8.77848936550473e-10,
+       "n": 121
+      },
+      "status_on_scored": {
+       "converged": 121,
+       "cap": 0,
+       "breakdown": 29
+      }
+     }
+    },
+    "steep": {
+     "points": 100,
+     "scored": 100,
+     "true_image_counts": {
+      "0": 53,
+      "1": 44,
+      "2": 3
+     },
+     "ours": {
+      "outcomes_pct": {
+       "every image": 47.0,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 53.0
+      },
+      "time": {
+       "median_us": 161.8000096641481,
+       "p95_us": 211.64998179301617,
+       "n": 100
+      },
+      "capped": 0,
+      "rings": 0,
+      "landing_m": {
+       "median": 3.068501553873711e-17,
+       "max": 2.7319725704854465e-15,
+       "n": 50
+      }
+     },
+     "ours_core": {
+      "time": {
+       "median_us": 102.59996633976698,
+       "p95_us": 111.70503566972911,
+       "n": 100
+      }
+     },
+     "ours_python": {
+      "time": {
+       "median_us": 5305.950006004423,
+       "p95_us": 13591.990020358935,
+       "n": 40
+      },
+      "same_as_compiled": 40,
+      "of": 40
+     },
+     "afrt": {
+      "outcomes_pct": {
+       "every image": 44.0,
+       "some images": 3.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 53.0
+      },
+      "time": {
+       "median_us": 90.74993431568146,
+       "p95_us": 270.6299477722494,
+       "n": 100
+      },
+      "landing_m": {
+       "median": 5.978570780837879e-10,
+       "max": 7.672421213276424e-10,
+       "n": 47
+      },
+      "status_on_scored": {
+       "converged": 47,
+       "cap": 0,
+       "breakdown": 53
+      }
+     }
+    },
+    "band": {
+     "points": 100,
+     "scored": 100,
+     "true_image_counts": {
+      "2": 100
+     },
+     "ours": {
+      "outcomes_pct": {
+       "every image": 100.0,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 0.0
+      },
+      "time": {
+       "median_us": 228.10004884377122,
+       "p95_us": 637.2799631208181,
+       "n": 100
+      },
+      "capped": 0,
+      "rings": 0,
+      "landing_m": {
+       "median": 6.170901266405357e-17,
+       "max": 6.549532232643261e-14,
+       "n": 200
+      }
+     },
+     "ours_core": {
+      "time": {
+       "median_us": 420.50000047311187,
+       "p95_us": 456.6199844703078,
+       "n": 100
+      }
+     },
+     "ours_python": {
+      "time": {
+       "median_us": 10313.550010323524,
+       "p95_us": 17478.479916462675,
+       "n": 40
+      },
+      "same_as_compiled": 40,
+      "of": 40
+     },
+     "afrt": {
+      "outcomes_pct": {
+       "every image": 0.0,
+       "some images": 100.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 0.0
+      },
+      "time": {
+       "median_us": 398.84995203465223,
+       "p95_us": 1941.110094776377,
+       "n": 100
+      },
+      "landing_m": {
+       "median": 6.703379832459854e-10,
+       "max": 8.095550682056554e-10,
+       "n": 100
+      },
+      "status_on_scored": {
+       "converged": 100,
+       "cap": 0,
+       "breakdown": 0
+      }
+     }
+    },
+    "edge": {
+     "points": 100,
+     "scored": 100,
+     "true_image_counts": {
+      "0": 57,
+      "2": 43
+     },
+     "ours": {
+      "outcomes_pct": {
+       "every image": 43.0,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 57.0
+      },
+      "time": {
+       "median_us": 222.15000353753567,
+       "p95_us": 260.84500714205205,
+       "n": 100
+      },
+      "capped": 0,
+      "rings": 0,
+      "landing_m": {
+       "median": 1.0832140803210714e-16,
+       "max": 1.5822643170392427e-12,
+       "n": 86
+      }
+     },
+     "ours_core": {
+      "time": {
+       "median_us": 119.1999763250351,
+       "p95_us": 148.2249703258276,
+       "n": 100
+      }
+     },
+     "ours_python": {
+      "time": {
+       "median_us": 8226.600009948015,
+       "p95_us": 21265.600080369022,
+       "n": 40
+      },
+      "same_as_compiled": 40,
+      "of": 40
+     },
+     "afrt": {
+      "outcomes_pct": {
+       "every image": 0.0,
+       "some images": 43.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 57.0
+      },
+      "time": {
+       "median_us": 399.2500132881105,
+       "p95_us": 2877.550001721827,
+       "n": 100
+      },
+      "landing_m": {
+       "median": 6.292922868205255e-10,
+       "max": 8.075808826194238e-10,
+       "n": 43
+      },
+      "status_on_scored": {
+       "converged": 43,
+       "cap": 0,
+       "breakdown": 57
+      }
+     }
+    },
+    "axis": {
+     "points": 100,
+     "scored": 100,
+     "true_image_counts": {
+      "1": 100
+     },
+     "ours": {
+      "outcomes_pct": {
+       "every image": 100.0,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 0.0
+      },
+      "time": {
+       "median_us": 194.65002696961164,
+       "p95_us": 234.76004134863615,
+       "n": 100
+      },
+      "capped": 0,
+      "rings": 0,
+      "landing_m": {
+       "median": 1.439979601426888e-17,
+       "max": 7.307053743246401e-17,
+       "n": 100
+      }
+     },
+     "ours_core": {
+      "time": {
+       "median_us": 109.65002002194524,
+       "p95_us": 129.1049353312701,
+       "n": 100
+      }
+     },
+     "ours_python": {
+      "time": {
+       "median_us": 3272.000001743436,
+       "p95_us": 8927.980047883455,
+       "n": 40
+      },
+      "same_as_compiled": 40,
+      "of": 40
+     },
+     "afrt": {
+      "outcomes_pct": {
+       "every image": 100.0,
+       "some images": 0.0,
+       "no answer": 0.0,
+       "false image": 0.0,
+       "correct empty": 0.0
+      },
+      "time": {
+       "median_us": 124.70001820474863,
+       "p95_us": 139.30501299910247,
+       "n": 100
+      },
+      "landing_m": {
+       "median": 6.987023268301319e-10,
+       "max": 9.916311149521792e-10,
+       "n": 100
+      },
+      "status_on_scored": {
+       "converged": 100,
+       "cap": 0,
+       "breakdown": 0
+      }
+     }
+    }
+   },
+   "batch_us_per_point_1_threads": 100.71488899282284,
+   "batch_us_per_point_all_threads": 15.916444438820085,
+   "machine_cpu_load_pct": {
+    "samples": [
+     85.0,
+     73.0,
+     66.0,
+     71.0,
+     67.0,
+     82.0
+    ],
+    "mean": 74.0,
+    "max": 85.0
+   },
+   "disagreements_with_truth": [],
+   "seconds": 320.39136919996236
+  }
+ },
+ "minutes": 10.58340811666761
+}

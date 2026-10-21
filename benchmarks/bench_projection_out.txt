@@ -1,0 +1,77 @@
+bench_projection, 2026-10-21 15:52
+machine: 13th Gen Intel(R) Core(TM) i9-13900K; Windows-10-10.0.26200-SP0; Python 3.11.16, NumPy 2.4.6; backends ['cpp', 'python'] (_core.cp311-win_amd64.pyd)
+truth: rays of our search and of a brute-force tracing search (grid (600, 400)) passing within 1e-09 r_P of the point; a returned ray is an image if within 1e-07 rad of a true ray's direction
+
+=== cylinder: radii (0.1, 0.094) m, indices (1.0, 1.49, 1.33), camera centre [0.35, 0.0, 0.0] m ===
+point sets: uniform 500, steep 100, band 100, edge 100, axis 100
+compiled backend, batch of 900 points, one thread: 153.6 us/point
+compiled backend, batch of 900 points, all cores: 27.8 us/point
+  uniform  done (500 points timed, 150 scored against the truth; 88 s)
+  steep    done (100 points timed, 100 scored against the truth; 141 s)
+  band     done (100 points timed, 100 scored against the truth; 213 s)
+  edge     done (100 points timed, 100 scored against the truth; 280 s)
+  axis     done (100 points timed, 100 scored against the truth; 312 s)
+
+cylinder: outcome on the points scored against the truth, percent of points
+  set       pts |           ours (compiled)            |           AFRT, one start            | true images
+                | every   some     no  false  corre | every   some     no  false  corre |
+  uniform   150 |  91.3    0.0    0.0    0.0    8.7 |  91.3    0.0    0.0    0.0    8.7 | 0: 13, 1: 137
+  steep     100 |  86.0    0.0    0.0    0.0   14.0 |  82.0    4.0    0.0    0.0   14.0 | 0: 14, 1: 82, 2: 4
+  band      100 | 100.0    0.0    0.0    0.0    0.0 |   0.0  100.0    0.0    0.0    0.0 | 2: 100
+  edge      100 |  42.0    0.0    0.0    0.0   58.0 |   0.0   42.0    0.0    1.0   57.0 | 0: 58, 2: 42
+  axis      100 | 100.0    0.0    0.0    0.0    0.0 | 100.0    0.0    0.0    0.0    0.0 | 1: 100
+  (columns: every image, some images, no answer, false image, correct empty)
+  precision of the true images returned (distance from the point to the traced ray): ours median 8.7e-17 m, largest 8.6e-12 m; AFRT median 6.5e-10 m, largest 9.8e-10 m
+
+cylinder: time per point, median / p95, single calls; machine CPU use during the run 76 % mean, 82 % max
+  set      | ours, project() (us) |  ours, core (us) |  ours, Python (ms) |  AFRT, Python (us) | Python = compiled
+  uniform  |      310 /      835 |    128 /    638 |   21.11 /  148.44 |      88 /     172 | 40/40
+  steep    |      399 /      851 |    294 /    697 |   79.93 /  165.95 |     121 /     329 | 40/40
+  band     |      208 /      306 |    109 /    227 |   21.44 /   36.80 |     406 /    1587 | 40/40
+  edge     |      180 /      330 |     83 /    180 |   13.87 /   28.45 |     222 /    2267 | 40/40
+  axis     |      115 /      499 |     93 /    499 |   15.11 /  162.85 |     127 /     136 | 40/40
+
+=== sphere: radii (0.1, 0.094) m, indices (1.0, 1.49, 1.33), camera centre [0.35, 0.0, 0.0] m ===
+point sets: uniform 500, steep 100, band 100, edge 100, axis 100
+compiled backend, batch of 900 points, one thread: 100.7 us/point
+compiled backend, batch of 900 points, all cores: 15.9 us/point
+  uniform  done (500 points timed, 150 scored against the truth; 84 s)
+  steep    done (100 points timed, 100 scored against the truth; 144 s)
+  band     done (100 points timed, 100 scored against the truth; 210 s)
+  edge     done (100 points timed, 100 scored against the truth; 279 s)
+  axis     done (100 points timed, 100 scored against the truth; 319 s)
+
+sphere: outcome on the points scored against the truth, percent of points
+  set       pts |           ours (compiled)            |           AFRT, one start            | true images
+                | every   some     no  false  corre | every   some     no  false  corre |
+  uniform   150 |  80.7    0.0    0.0    0.0   19.3 |  78.0    2.7    0.0    0.0   19.3 | 0: 29, 1: 117, 2: 4
+  steep     100 |  47.0    0.0    0.0    0.0   53.0 |  44.0    3.0    0.0    0.0   53.0 | 0: 53, 1: 44, 2: 3
+  band      100 | 100.0    0.0    0.0    0.0    0.0 |   0.0  100.0    0.0    0.0    0.0 | 2: 100
+  edge      100 |  43.0    0.0    0.0    0.0   57.0 |   0.0   43.0    0.0    0.0   57.0 | 0: 57, 2: 43
+  axis      100 | 100.0    0.0    0.0    0.0    0.0 | 100.0    0.0    0.0    0.0    0.0 | 1: 100
+  (columns: every image, some images, no answer, false image, correct empty)
+  precision of the true images returned (distance from the point to the traced ray): ours median 3.1e-17 m, largest 1.6e-12 m; AFRT median 6.3e-10 m, largest 9.9e-10 m
+
+sphere: time per point, median / p95, single calls; machine CPU use during the run 74 % mean, 85 % max
+  set      | ours, project() (us) |  ours, core (us) |  ours, Python (ms) |  AFRT, Python (us) | Python = compiled
+  uniform  |      245 /      629 |    124 /    443 |    6.00 /   14.19 |     191 /     436 | 40/40
+  steep    |      162 /      212 |    103 /    112 |    5.31 /   13.59 |      91 /     271 | 40/40
+  band     |      228 /      637 |    421 /    457 |   10.31 /   17.48 |     399 /    1941 | 40/40
+  edge     |      222 /      261 |    119 /    148 |    8.23 /   21.27 |     399 /    2878 | 40/40
+  axis     |      195 /      235 |    110 /    129 |    3.27 /    8.93 |     125 /     139 | 40/40
+
+=== headline ===
+cylinder: complete and correct answer (every image, or a correct empty one):
+    uniform points:   ours 100.0 %   AFRT 100.0 %
+    difficult points: ours 100.0 %   AFRT  63.2 %
+    median time, uniform set: ours compiled 310 us through project() (128 us in the core), ours Python 21.1 ms, AFRT (Python) 88 us; compiled batch 154 us/point on one thread, 27.8 on all cores
+    points where ours is not complete against the truth: 0
+sphere: complete and correct answer (every image, or a correct empty one):
+    uniform points:   ours 100.0 %   AFRT  97.3 %
+    difficult points: ours 100.0 %   AFRT  63.5 %
+    median time, uniform set: ours compiled 245 us through project() (124 us in the core), ours Python 6.0 ms, AFRT (Python) 191 us; compiled batch 101 us/point on one thread, 15.9 on all cores
+    points where ours is not complete against the truth: 0
+
+Notes: AFRT returns at most one ray per start, so it cannot give both images of a two-image point; a converged AFRT ray is a true image, and on easy points one start is often all it needs.  Times of AFRT here are of a Python implementation and those of 'ours, compiled' of C++ behind a Python call, so they are not a like-for-like comparison of the two algorithms' cost; the paper compares both in C++ (its Section 9.2.1).
+
+total 10.6 min

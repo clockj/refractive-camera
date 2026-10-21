@@ -32,13 +32,13 @@ def triangulate(cameras, pixels, window, *, refine=True, backend=None, max_iter=
     ----------
     cameras : sequence of Camera
     pixels : (L, 2) array_like
-    window : CylindricalWindow or SphericalWindow
+    window : CylindricalWindow, SphericalWindow or FlatWindow
     refine : bool
     backend : str, optional
         Passed to `project()`.
     max_iter : int
     step : float, optional
-        Finite-difference step, in length units; 1e-6 of the innermost radius by default.
+        Finite-difference step, in length units; 1e-7 of the cameras' median distance to the point by default.
 
     Returns
     -------
@@ -67,7 +67,8 @@ def triangulate(cameras, pixels, window, *, refine=True, backend=None, max_iter=
     groups = {}
     for i, c in enumerate(cameras):
         groups.setdefault(id(c), (c, []))[1].append(i)
-    h = 1e-6 * window.radii[-1] if step is None else step
+    scale = float(np.median([np.linalg.norm(X - c.center) for c in cameras]))     # the rig's length scale
+    h = 1e-7 * scale if step is None else step
 
     def residuals(Xs, targets):
         """Reprojection residuals (L, 2) of each candidate point in Xs (P, 3), against targets (P, L, 2)."""
@@ -106,7 +107,7 @@ def triangulate(cameras, pixels, window, *, refine=True, backend=None, max_iter=
                 mu *= 10
                 if mu > 1e8:
                     break
-            if mu > 1e8 or np.linalg.norm(dX) <= 1e-12 * window.radii[-1]:
+            if mu > 1e8 or np.linalg.norm(dX) <= 1e-13 * scale:
                 break
     return X, {"rms_px": float(np.sqrt(c0 / max(good.sum(), 1))), "residuals_px": r, "lines_ok": lines_ok,
                "iterations": it}

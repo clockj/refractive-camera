@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from . import _reference
+from .flat import project_flat
 
 try:
     from . import _core
@@ -31,7 +32,8 @@ def _backend(name):
 
 @dataclass(frozen=True)
 class Images:
-    """Every image of every point: one row per image, grouped by point in input order, and one status per point.
+    """Every image of every point: one row per image, grouped by point in input order (in no particular order within
+    a point), and one status per point.
 
     A point can have no image (the window hides it), one, or several: a near- and a far-branch ray, rays turning
     either way round the axis, rays that sweep past pi.
@@ -45,7 +47,7 @@ class Images:
     branch : (K,) str
         "near" (the ray meets the point before its closest approach to the axis or centre), "far" (after it), or
         "ring" (a sphere's axial ring: a cone of rays imaging a circle, for points on the line through the centre
-        and the camera).
+        and the camera).  A flat window's single ray is labelled "near".
     lam, c_z : (K,) float
         The ray's conserved momenta: Lambda = n r dphi/ds (signed; its sign is the sense of rotation) and
         C_z = n dz/ds about the cylinders' axis (0 for spheres).
@@ -90,12 +92,15 @@ def project(points, camera, window, *, backend=None, tol=1e-9, threads=1):
     Parameters
     ----------
     points : (M, 3) or (3,) array_like
-        World points; those not strictly inside the innermost interface get the status "outside_model".
+        World points.  Those where the model does not apply get the status "outside_model": not strictly inside the
+        innermost interface, or not beyond a flat window's last one.
     camera : Camera
-        Its centre must lie outside the outermost interface.
-    window : CylindricalWindow or SphericalWindow
+        Its centre must lie outside the window: beyond its outermost interface, or on the camera's side of a flat
+        window.
+    window : CylindricalWindow, SphericalWindow or FlatWindow
     backend : {"cpp", "python"}, optional
-        The compiled core (default when built) or the pure-Python reference; both run the same search.
+        The compiled core (default when built) or the pure-Python reference; both run the same search.  A flat
+        window has one image per point, found in NumPy whatever the backend.
     tol : float
         Accepted residual of a ray, on the dimensionless sweep (the search scales lengths by a power of two near the
         camera's distance from the axis or centre, so the result does not depend on the length unit).
@@ -109,25 +114,29 @@ def project(points, camera, window, *, backend=None, tol=1e-9, threads=1):
     pts = np.asarray(points, float).reshape(-1, 3)
     centre = camera.center
     if not window.outside(centre):
-        raise ValueError("the camera must be outside the window's outermost interface")
+        raise ValueError("the camera must be outside the window: beyond its outermost interface, or on the "
+                         "camera's side of a flat window")
     ok = np.all(np.isfinite(pts), 1)
     ok[ok] = window.inside(pts[ok])
     status = np.where(ok, "ok", "outside_model").astype("<U13")
     idx = np.flatnonzero(ok)
 
-    be = _backend(backend)
-    n, R = list(window.indices), list(window.radii)
-    P0 = window.to_local(centre)
-    X = window.to_local(pts[idx])
-    if window.kind == "cylinder":
-        rows = be.project_cylinder(n, R, P0, X, tol, threads)
-    elif window.kind == "sphere":
-        rows = be.project_sphere(n, R, P0, X, tol, threads)
+    if window.kind == "flat":
+        rows = project_flat(window, centre, pts[idx])
+        direction = rows["dir"].copy()
     else:
-        raise TypeError(f"unsupported window {window!r}")
-
+        be = _backend(backend)
+        n, R = list(window.indices), list(window.radii)
+        P0 = window.to_local(centre)
+        X = window.to_local(pts[idx])
+        if window.kind == "cylinder":
+            rows = be.project_cylinder(n, R, P0, X, tol, threads)
+        elif window.kind == "sphere":
+            rows = be.project_sphere(n, R, P0, X, tol, threads)
+        else:
+            raise TypeError(f"unsupported window {window!r}")
+        direction = window.vectors_to_world(rows["dir"])
     ring = rows["ring"]
-    direction = window.vectors_to_world(rows["dir"])
     direction[ring] = np.nan
     uv, in_front = camera.pixels_from_directions(direction @ camera.R.T)
     in_front &= np.all(np.isfinite(uv), 1)

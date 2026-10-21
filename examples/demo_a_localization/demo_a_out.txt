@@ -1,0 +1,25 @@
+Demo A: 150 frames, 3 cameras, backends ('cpp', 'python'), refractive_camera 0.1.0.dev0, Python 3.11.16
+tube (0.1, 0.094) m, indices (1.0, 1.49, 1.33); dot radius 1 mm; lens (-0.08, 0.02, 0.0, 0.0, 0.0)
+rendered and detected 450 frames in 289 s (8 processes)
+
+where the dot appears (450 camera-frames, 379 blobs detected):
+  camera 0: frames with 0/1/2/3+ images predicted: [29, 116, 5, 0]
+  camera 1: frames with 0/1/2/3+ images predicted: [31, 114, 5, 0]
+  camera 2: frames with 0/1/2/3+ images predicted: [29, 116, 5, 0]
+  project()       : 371 images matched to blobs, 5 predicted but not seen, 8 blobs not predicted; 0.48 ms per projection
+                    blob centroid to predicted image: median 0.014 px, p95 0.220 px, max 3.584 px
+  AFRT, one start : 358 images matched to blobs, 3 predicted but not seen, 21 blobs not predicted; 0.17 ms per projection
+                    blob centroid to predicted image: median 0.013 px, p95 0.145 px, max 3.460 px
+  AFRT outcomes: {'converged-true': 361, 'converged-false': 0, 'cap': 0, 'breakdown': 89}
+
+baseline calibration (pinhole + distortion, refraction ignored), on the dot grid r <= 60 mm, |z| <= 40 mm:
+  camera 0: 999 points, rms 8.175 px; fx 11983.0 fy 9540.7 (true 2200), k1 11.3823 (true -0.08); centre 1.635 m from the axis (true 0.400 m)
+  camera 1: 999 points, rms 7.765 px; fx 14482.6 fy 13609.1 (true 2200), k1 0.9266 (true -0.08); centre 2.440 m from the axis (true 0.420 m)
+  camera 2: 999 points, rms 7.999 px; fx 11180.3 fy 8873.6 (true 2200), k1 -9.2192 (true -0.08); centre 1.518 m from the axis (true 0.400 m)
+
+where the dot is: 3-D error in mm
+  refractive (ours)      inside the calibration volume (19 frames): rms 0.0011, p95 0.0019, max 0.0020;  outside (120): rms 0.0857, p95 0.1269, max 0.5232
+  pinhole + distortion   inside the calibration volume (19 frames): rms 0.9419, p95 1.1726, max 1.4540;  outside (104): rms 8.1153, p95 15.7210, max 21.6214
+  ours: median reprojection rms 0.005 px; 37.5 ms per frame (baseline 0.92 ms)
+
+total 300 s

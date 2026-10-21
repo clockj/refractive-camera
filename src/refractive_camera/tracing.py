@@ -23,7 +23,7 @@ class Trace:
         Its unit direction there (world frame); NaN unless ok.
     length : (L,) float
         The length of its straight path through the innermost medium, from `entry` to where it reaches the innermost
-        interface again.  Every point the ray reaches lies on ``entry + s * direction`` with 0 <= s <= length.
+        interface again (infinite for a flat window).  Every point the ray reaches lies on ``entry + s * direction`` with 0 <= s <= length.
     hits : (L, N - 1, 3) float
         Its crossing of each interface, outermost first (world frame); NaN from the first failure on.
     segments : (L, N, 3) float
@@ -47,7 +47,7 @@ class Trace:
         v = np.asarray(points, float) - self.entry
         s = np.einsum("ij,ij->i", v, self.direction)
         dist = np.linalg.norm(v - s[:, None] * self.direction, axis=1)
-        span = 1e-12 * (1.0 + self.length)
+        span = 1e-12 * (1.0 + np.nan_to_num(self.length, posinf=0.0))
         good = self.ok & (s >= -span) & (s <= self.length + span)
         return np.where(good, dist, np.inf)
 
@@ -88,14 +88,22 @@ def trace(window, origins, directions):
 
     Parameters
     ----------
-    window : CylindricalWindow or SphericalWindow
+    window : CylindricalWindow, SphericalWindow or FlatWindow
     origins, directions : (L, 3) or (3,) array_like
-        World points outside the outermost interface, and the rays' directions (any length).
+        World points outside the window (beyond its outermost interface, or on the camera's side of a flat one), and
+        the rays' directions (any length).
 
     Returns
     -------
     Trace
     """
+    if window.kind == "flat":                          # planes: the last medium is unbounded
+        from .flat import trace_flat
+        p, d = np.broadcast_arrays(np.atleast_2d(np.asarray(origins, float)),
+                                   np.atleast_2d(np.asarray(directions, float)))
+        ok, reason, hits, segs, entry, d = trace_flat(window, p, d / np.linalg.norm(d, axis=1, keepdims=True))
+        return Trace(ok=ok, entry=entry, direction=d, length=np.where(ok, np.inf, np.nan), hits=hits,
+                     segments=segs, reason=reason)
     p = window.to_local(np.atleast_2d(np.asarray(origins, float)))
     d = window.vectors_to_local(np.atleast_2d(np.asarray(directions, float)))
     p, d = np.broadcast_arrays(p, d)
