@@ -1,0 +1,23 @@
+# ---- Kept out of this public repository ----
+# Reference papers: copyrighted PDFs, for local reading only.  (Other local-only files are listed in
+# .git/info/exclude, which is never published.)
+/Ref/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+# the compiled core, when built in place (python setup.py build_ext --inplace)
+*.pyd
+*.so
+.venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
