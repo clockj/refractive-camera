@@ -1,31 +1,71 @@
-# refractive-camera
+<h1 align="center">refractive-camera</h1>
 
-Camera models that see through curved windows. For a 3-D point behind a cylindrical or spherical window (a
-water-filled tube, a pipe, a spherical tank), `project()` finds **every** pixel where the point appears: none when
-the wall hides it, one, or several. The camera can look in from outside, or out from inside: from a cylindrical
-housing, from behind a dome port, or from inside a tank. Flat windows (tank walls, flat ports) are covered too, and
-every model comes with its analytic derivative.
+<p align="center">
+  <b>Camera models that see through curved windows.</b><br>
+  For a point behind a water-filled tube, a tank, a dome port or a flat wall, <code>project()</code> finds
+  <b>every</b> pixel where it appears (none, one or several) and the analytic derivative of each.
+</p>
 
-![A robot arm catches a ball in a water tank; it sees the ball only through the tank's curved wall](examples/demo_d_arm/catch.gif)
+<p align="center">
+  <a href="https://arxiv.org/abs/2610.17413"><img alt="arXiv 2610.17413" src="https://img.shields.io/badge/arXiv-2610.17413-b31b1b.svg"></a>
+  <img alt="Python 3.10 or later" src="https://img.shields.io/badge/python-3.10%2B-3776ab.svg">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-2ea44f.svg"></a>
+  <img alt="Version 0.1.0.dev0" src="https://img.shields.io/badge/version-0.1.0.dev0-orange.svg">
+</p>
 
-*A Franka arm (MuJoCo) with a slim gripper catches a ball swimming next to the wall of a water tank; it sees the ball only through the curved wall, with three cameras. Left: its perception models the refraction with `project()`. Right: pinhole + distortion cameras calibrated through the tank. The rings show where each expects the ball in two of the cameras: ours draws two where the wall shows the ball twice, and none where the wall hides it. [Demo D](examples/demo_d_arm/README.md).*
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="examples/demo_d_arm/catch.gif" alt="A robot arm catches a ball it sees only through a water tank's curved wall">
+      <br><b>Catching through a curved wall.</b> A Franka arm sees the ball only through the tank's wall. Ours (left)
+      draws two rings where the wall shows the ball twice and none where it hides it; pinhole + distortion (right)
+      misses 12 of 20 balls next to the wall. <a href="examples/demo_d_arm/README.md">Demo D</a>
+    </td>
+    <td width="50%" valign="top">
+      <img src="examples/demo_e_housing/docking.gif" alt="A robot docks with its camera inside an acrylic tube housing">
+      <br><b>A camera inside its housing.</b> A robot docks through an acrylic tube. A pinhole camera calibrated in
+      the water puts the dock 11 mm off; ours, 0.9 mm. The outlines show where each estimate puts the dock.
+      <a href="examples/demo_e_housing/README.md">Demo E</a>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <img src="examples/demo_c_splatting/orbit.gif" alt="Gaussian splatting through a water-filled tube, from a camera circling it">
+      <br><b>Gaussian splatting through the tube.</b> Ray-traced truth, ours and the best pinhole model, from a camera
+      circling the tube. <a href="examples/demo_c_splatting/README.md">Demo C</a>
+    </td>
+  </tr>
+</table>
 
-> **Status: early development (0.1.0.dev0).** The projection is complete and validated (below); the API may still
-> change. Robotics integration (NVIDIA Isaac Sim) is being prepared: [docs/isaac_validation.md](docs/isaac_validation.md).
+> [!NOTE]
+> **Early development (0.1.0.dev0).** The projection is complete and validated (below); the API may still change.
+> Robotics integration (NVIDIA Isaac Sim) is being prepared: [docs/isaac_validation.md](docs/isaac_validation.md).
+
+## Highlights
+
+- 🔍 **Complete.** Every image of every point, from closed-form ray equations and a certified search: both images
+  where a wall shows a point twice, none where it hides it. A point with no image is reported as hidden, not as a
+  failed search.
+- 🔁 **Either side of the window.** A camera looking into a tank, a tube or a flask, or out of a dome port or a
+  cylindrical housing.
+- 📐 **Differentiable.** The analytic Jacobian of every image, in its point and in the camera's pose, for every window.
+  A splatting step needs 68 ms per view with it, against 7.6 s for an iterative method with finite differences.
+- ✅ **Checked independently.** Every ray is traced back by a vector-Snell tracer that shares none of the closed forms,
+  and image lists are compared with a brute-force search by tracing alone.
+- ⚡ **Fast.** A compiled core: about 0.13 ms per point on one thread, 0.02–0.03 ms on all cores.
 
 ## Why
 
 A tank, a tube or a dome bends every ray that passes through its wall. A point inside can appear displaced, stretched,
 **twice**, or **not at all**, and where it appears depends on the camera's pose as well as on the point. A pinhole
 camera with lens distortion cannot represent that, even when it is calibrated through the window.
-- **The pinhole camera.** In the demo below it is off by about a millimetre even where it was calibrated, and by 8 mm
-  (up to 22 mm) near the wall.
+- **The pinhole camera.** In Demo A it is off by about a millimetre even where it was calibrated, and by 8 mm (up to
+  22 mm) near the wall.
 - **The refractive model** is good to a micrometre wherever the target's image is undistorted.
 
 Iterative ray-shooting methods find one image from one starting guess, so a point with two images comes back with
 one. When they return nothing, the point may be hidden, or the search may simply have failed (see the benchmark).
-`project()` returns the complete list of images for every point, from closed-form ray equations and a certified
-search.
+`project()` returns the complete list of images for every point.
 
 ## Install
 
@@ -36,13 +76,16 @@ pip install .            # from a checkout; builds the compiled core if a C++17 
 - **Requirements.** Python 3.10 or later, NumPy and mpmath.
 - **Without a compiler** the package installs as pure Python. That is the same search, about 100 times slower.
 - **Check.** `refractive_camera.available_backends()` says which backends you have.
-- **Optional dependencies.**
-  - Demo A: `pip install .[demo]` (matplotlib, scipy, Pillow).
-  - Demo B: `.[sfm]`, which adds OpenCV and pycolmap.
-  - Demo C: `.[splat]`, which adds PyTorch.
-  - Demo D: `.[robot]`, which adds MuJoCo and imageio.
-  - Demo E: `.[housing]`, which adds OpenCV.
-  - The tests: `.[test]`.
+- **Optional dependencies:**
+
+  | Extra | Adds | For |
+  |---|---|---|
+  | `.[demo]` | matplotlib, scipy, Pillow | Demo A, the figures |
+  | `.[sfm]` | OpenCV, pycolmap | Demo B |
+  | `.[splat]` | PyTorch | Demo C |
+  | `.[robot]` | MuJoCo, imageio | Demo D |
+  | `.[housing]` | OpenCV | Demo E |
+  | `.[test]` | pytest | the tests |
 
 ## Quick start
 
@@ -62,10 +105,8 @@ print(images.counts())          # [1 2 0]: images per point
 print(images.uv)                # one pixel per image; images.point says whose
 ```
 
-Run `python examples/quickstart.py` for the full example.
-
-**From inside.** A window lists its media from the outermost inward, whichever side the camera is on, so a camera
-in air behind a dome port under water is
+**From inside.** A window lists its media from the outermost inward, whichever side the camera is on. A camera in
+air behind a dome port under water is
 
 ```python
 dome = rc.SphericalWindow(radii=(0.100, 0.094), indices=(1.33, 1.49, 1.0))      # water, acrylic, air
@@ -74,26 +115,24 @@ cam = rc.Camera.look_at(position=(0.0, 0.0, -0.020), target=(0.0, 0.0, 1.0), up=
 images = rc.project([[0.30, 0.10, 0.80]], cam, dome)  # 1 image, 11 px from where a pinhole camera puts it
 ```
 
-`python examples/quickstart_inside.py` adds a camera in a water-filled tube looking out. That camera sees some
-points twice and others not at all, and half of its pixels see only the wall's reflection.
+- `python examples/quickstart.py`: the first example in full.
+- `python examples/quickstart_inside.py`: the dome port, and a camera in a water-filled tube looking out. That camera
+  sees some points twice and others not at all, and half of its pixels see only the wall's reflection.
 
-`project()` handles any number of coaxial cylinders, concentric spheres or parallel planes
-(`CylindricalWindow`, `SphericalWindow`, `FlatWindow`), in any position and orientation, with the camera outside a
-curved window or inside it. Each result row carries:
-- the pixel and whether it falls on the sensor;
-- the branch: the ray meets the point before or after its closest approach to the axis;
-- the ray's conserved momenta;
-- its direction at the camera.
+## What's in the package
 
-Also in the package:
+`project()` handles any number of coaxial cylinders, concentric spheres or parallel planes (`CylindricalWindow`,
+`SphericalWindow`, `FlatWindow`), in any position and orientation, with the camera outside a curved window or inside
+it. Each result row carries the pixel and whether it falls on the sensor, the branch (the ray meets the point before
+or after its closest approach to the axis), the ray's conserved momenta and its direction at the camera.
 
 | | |
 |---|---|
 | `trace()`, `back_project()` | Vector-Snell ray tracing through the window, from outside or inside: from pixels to the line each one sees across the window |
 | `triangulate()` | A point from pixels in two or more cameras: back-projected lines, then reprojection refinement |
 | `image_jacobians()` | How each image's pixel moves with its point and with the camera's pose, for every window and either side: analytic, for bundle adjustment and differentiable rendering |
-| `scene.render_scene()` | A ray-traced renderer of textured objects behind (and in front of) the window, with the true hit point of every pixel |
-| `render_dots()` | A small ray-traced renderer of dots behind the window, for synthetic data |
+| `scene.render_scene()` | A ray-traced renderer of textured objects across the window (and in front of it), with the true hit point of every pixel |
+| `render_dots()` | A small ray-traced renderer of dots across the window, for synthetic data |
 | `tracing.search_images()` | A brute-force image search by tracing alone, used to validate `project()` |
 | `baselines.afrt()` | A published iterative method (AFRT, Belden 2013), for comparison |
 | `isaac` | Conversions between Isaac Sim / USD cameras and `Camera` (no Isaac Sim import) |
@@ -110,7 +149,7 @@ water-filled reference tube:
 - **a pinhole camera with OpenCV distortion,** the model of OpenCV, COLMAP and ROS, here calibrated through the
   tube on points filling the water: its best case.
 
-The truth comes from a brute-force search by tracing. ([benchmarks/cases.py](benchmarks/README.md))
+The truth comes from a brute-force search by tracing ([benchmarks/cases.py](benchmarks/README.md)).
 
 | Points | `project()` | AFRT, one start | Pinhole + distortion |
 |---|---:|---:|---:|
@@ -120,24 +159,26 @@ The truth comes from a brute-force search by tracing. ([benchmarks/cases.py](ben
 | at the edge of the two-image band | **100 %** | 0 % | 0 % (47 px off) |
 | within 9 mm of the wall | **100 %** | 94 % | 0 % (30 px off) |
 
-![cases](benchmarks/cases.png)
+![Each model's answer at the hand-picked points of the case gallery](benchmarks/cases.png)
 
-**The pinhole + distortion camera** is the camera model of OpenCV and COLMAP:
-- a pinhole projection with focal lengths and a principal point;
-- a lens polynomial in the radius, (k1, k2, k3), plus tangential terms (p1, p2).
+<details>
+<summary><b>Why a calibrated pinhole camera cannot absorb a curved window</b></summary>
 
+The pinhole + distortion camera is the camera model of OpenCV and COLMAP: a pinhole projection with focal lengths
+and a principal point, and a lens polynomial in the radius, (k1, k2, k3), plus tangential terms (p1, p2).
 Calibrating it through the window lets the polynomial absorb what it can of the refraction. It cannot absorb
 everything:
 - the bending depends on the point's depth along the ray, not only on its direction;
 - the refracted rays do not meet at one centre;
 - through a curved window a point can have two images, or none, while a lens maps each point to exactly one.
 
+</details>
+
 ## Demos
 
 Five demos, each with its README, its script and its numbers. Every image they use is ray-traced through the window
 by the package's own renderer (`refractive_camera.scene`), which uses none of the projection's equations, so no
-comparison is circular. Each demo keeps its renders and models in a `_cache/` folder beside it; set `REFCAM_CACHE` to
-keep them elsewhere.
+comparison is circular.
 
 | Demo | What it shows | Refractive model (ours) | Without a refractive model |
 |---|---|---|---|
@@ -146,6 +187,10 @@ keep them elsewhere.
 | [C. Gaussian splatting](examples/demo_c_splatting/README.md) | 3-D Gaussian splatting of the stones, each Gaussian drawn at every image; the same Gaussians drawn with the tube taken away; training from a robot's poses | 31.9 dB test PSNR (28.8 dB from new poses); Gaussians 1.0 mm from the true surface; 31.5 dB without the tube; 30.1 dB from a robot's poses, refined as it trains | AFRT's images + our Jacobian: 31.8 dB (28.9 dB), 1.0 mm; pinhole + distortion: 24.0 dB (22.2 dB), 2.1 mm, 21.8 dB without the tube; pinhole: 23.3 dB (21.4 dB), 3.9 mm, 19.1 dB |
 | [D. A robot arm catches a ball](examples/demo_d_arm/README.md) | a Franka with a slim gripper reaches into a water tank; it sees the ball only through the wall | 40 of 40 caught; 20 of 20 next to the wall | pinhole + AFRT: 40 of 40, 20 of 20; pinhole + distortion: 28 of 40, 8 of 20 |
 | [E. A camera in an underwater housing](examples/demo_e_housing/README.md) | one camera behind a flat port, behind a dome port and inside a tube, calibrated in the water; a robot docks with it | under 0.0001 px off when calibrated on exact pixels; docking through the tube: the dock 0.9 mm off at 1–3 m, 0.5 mm in the final metre | pinhole + distortion calibrated in the water (on exact pixels): up to 77 px off through the tube, 40 px through the flat port, 0.45 px through the dome; docking through the tube: 11 mm off |
+
+> [!TIP]
+> Each demo keeps its renders and trained models in a `_cache/` folder beside it. Set `REFCAM_CACHE` to keep them
+> elsewhere.
 
 **What the comparisons show:**
 - **A pinhole camera cannot stand in for a curved window,** even calibrated through it. Its errors are millimetres to
@@ -219,7 +264,7 @@ The checks are listed in [docs/validation.md](docs/validation.md):
 
 ## Scope
 
-Supported now:
+**Supported now:**
 - A camera **outside** coaxial cylindrical or concentric spherical interfaces, looking at points inside the
   innermost one: tubes, pipes, tanks, flasks.
 - A camera **inside** them, looking at points outside the outermost one: a camera in a cylindrical housing or behind
@@ -231,7 +276,7 @@ Supported now:
 - Any number of interfaces and any positive refractive indices.
 - Analytic derivatives of every image with respect to its point and to the camera's pose, for all of these.
 
-Not yet:
+**Not yet:**
 - A camera between two interfaces (in a wall).
 - Non-concentric or deforming interfaces.
 - Brightness: the model gives where an image is, not how bright it is.
@@ -241,10 +286,20 @@ very edge of the wall's shadow.
 
 ## Citation
 
-The method:
+If you use this package, please cite the method:
 
 S. Zhong, S. Tan, X. Zhang, Y. Li and R. Ni, "A complete forward projection algorithm through cylindrical and
 spherical refractive windows", [arXiv:2610.17413](https://arxiv.org/abs/2610.17413) (2026).
+
+```bibtex
+@misc{zhong2026refractive,
+  title         = {A complete forward projection algorithm through cylindrical and spherical refractive windows},
+  author        = {Zhong, S. and Tan, S. and Zhang, X. and Li, Y. and Ni, R.},
+  year          = {2026},
+  eprint        = {2610.17413},
+  archivePrefix = {arXiv}
+}
+```
 
 ## License and contact
 

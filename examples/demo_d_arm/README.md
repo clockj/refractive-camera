@@ -46,6 +46,16 @@ and the stones in the water.
 | **pinhole + AFRT** | the refraction-aware perception, but each camera's predicted image comes from one AFRT start: at most one image, none where AFRT fails. Triangulation from the blobs' traced rays. |
 | **pinhole + distortion** | each camera's own OpenCV model, calibrated through the tank on a 3-D target in its middle (r ≤ 80 mm; fits of 1.3 px rms), as a user unaware of refraction would do. Straight-ray triangulation. |
 
+**Calibration.**
+- **The two refraction-aware perceptions** (ours and pinhole + AFRT) are given the cameras' and the tank's true
+  parameters, as a perfect calibration through the tank would give them. So no calibration error enters them here.
+  Demo E calibrates the refractive model from images instead.
+- **Pinhole + distortion** has no such parameters to be given. Each camera's model is fitted through the tank to
+  3,000 points of its middle, with 0.1 px of noise: its best case.
+
+**Nothing is learned.** The arm is driven by damped least-squares inverse kinematics toward the filter's prediction,
+through a scripted sequence (wait, approach, descend, close, lift). The thresholds of the sequence were set by hand.
+
 ![what each camera sees](visibility.png)
 
 ## Part 1: catches (`demo_d_out.txt`)
