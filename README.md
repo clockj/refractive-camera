@@ -257,9 +257,9 @@ brute-force search that uses tracing alone.
 | Difficult sets pooled: complete and correct | 100 % | 63 % |
 | Two-image points: both images returned | 100 % | 0 % |
 
-**Speed.** The compiled core takes about 0.13 ms per point at the median on one thread. A batch runs at 0.02–0.03 ms
-per point on all cores of a desktop CPU. A camera inside a window needs one search per point: about 0.2 ms per point
-on one thread and 0.02 ms on all cores. All were timed on a busy machine; see the benchmark.
+**Speed.** The compiled core takes about 0.13 ms per point at the median on one thread, and a batch runs at 0.02–0.03
+ms per point on all cores of a desktop CPU (the benchmark). A camera inside a window needs one search per point:
+about 0.2 ms per point on one thread and 0.02 ms on all cores. All were timed on a busy machine.
 
 **Against AFRT.** On easy points one AFRT start is faster. What it cannot do is return every image, or tell a
 hidden point from a failed search.
