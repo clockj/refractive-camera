@@ -33,17 +33,18 @@ def _afrt_pixel(cam, window, s):
     return uv[0], tr.direction[0]
 
 
-def surface_images(X, cam, window, ball_rgb):
-    """The visible images of the ball's surface points by AFRT: pixels (K, 2), weights (K,) and d(uv)/dX (K, 2, 3)
-    by central differences of AFRT."""
-    S = np.asarray(X, float) + ball_image.arm.BALL_R * ball_image.NORMALS
+def surface_images(X, cam, window, ball_rgb, normals=None):
+    """The visible images of the ball's surface points (`normals`, ball_image.NORMALS by default) by AFRT: pixels
+    (K, 2), weights (K,) and d(uv)/dX (K, 2, 3) by central differences of AFRT."""
+    normals = ball_image.NORMALS if normals is None else normals
+    S = np.asarray(X, float) + ball_image.arm.BALL_R * normals
     uv, w, J = [], [], []
     W, Hh = cam.size
     for k, s in enumerate(S):
         p, d_last = _afrt_pixel(cam, window, s)
         if p is None or not (-0.5 <= p[0] < W - 0.5 and -0.5 <= p[1] < Hh - 0.5):
             continue
-        n = ball_image.NORMALS[k]
+        n = normals[k]
         if d_last @ n >= 0:
             continue                                        # the ray reaches the point from inside the ball
         cols = []
@@ -69,37 +70,29 @@ def surface_images(X, cam, window, ball_rgb):
     return np.array(uv), np.array(w), np.array(J)
 
 
-def predicted_centroids(X, cam, window, ball_rgb, blobs, reach=60.0):
+def predicted_centroids(X, cam, window, ball_rgb, blobs, reach=60.0, regions=None, normals=None):
     """As `ball_image.predicted_centroids`, from AFRT's images."""
-    uv, w, J = surface_images(X, cam, window, ball_rgb)
-    out, dout = np.full((len(blobs), 2), np.nan), np.full((len(blobs), 2, 3), np.nan)
-    if not len(uv):
-        return out, dout
-    d = np.linalg.norm(uv[:, None, :] - np.asarray(blobs)[None], axis=2)
-    which = np.argmin(d, axis=1)
-    near = d[np.arange(len(uv)), which] < reach
-    for k in range(len(blobs)):
-        m = near & (which == k) & (w > 0)
-        if m.any():
-            out[k] = (w[m, None] * uv[m]).sum(0) / w[m].sum()
-            dout[k] = (w[m, None, None] * J[m]).sum(0) / w[m].sum()
-    return out, dout
+    uv, w, J = surface_images(X, cam, window, ball_rgb, normals)
+    return ball_image.centroids(uv, w, J, blobs, reach, regions)
 
 
-def fit(observations, X0, window, ball_rgb, iters=6):
+def fit(observations, X0, window, ball_rgb, iters=6, weigh=False):
     """`ball_image.fit` with AFRT's predicted centroids: the ball's centre and the rms of the residuals (px)."""
     saved = ball_image.predicted_centroids
     ball_image.predicted_centroids = predicted_centroids
     try:
-        return ball_image.fit(observations, X0, window, ball_rgb, iters)
+        return ball_image.fit(observations, X0, window, ball_rgb, iters, weigh)
     finally:
         ball_image.predicted_centroids = saved
 
 
-def blobs_near(X, cam, window, blobs, gate=60.0):
-    """The blobs within `gate` px of AFRT's image of X (its only one): the ball's blobs as AFRT sees them."""
+def blobs_near(X, cam, window, blobs, gate=60.0, regions=None):
+    """The blobs within `gate` px of AFRT's image of X (its only one): the ball's blobs as AFRT sees them; with
+    `regions` (each blob's pixels), also theirs."""
     p, _ = _afrt_pixel(cam, window, np.asarray(X, float))
     if p is None or not len(blobs):
-        return np.zeros((0, 2))
-    d = np.linalg.norm(np.asarray(blobs)[:, :2] - p, axis=1)
-    return np.asarray(blobs)[d < gate, :2]
+        return np.zeros((0, 2)) if regions is None else (np.zeros((0, 2)), [])
+    near = np.linalg.norm(np.asarray(blobs)[:, :2] - p, axis=1) < gate
+    if regions is None:
+        return np.asarray(blobs)[near, :2]
+    return np.asarray(blobs)[near, :2], [q for q, k in zip(regions, near) if k]

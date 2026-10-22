@@ -3,7 +3,7 @@
 ```sh
 python examples/demo_d_arm/demo_d.py --kinds refractive,afrt,pinhole   # 40 ball paths x 3 perceptions, ~15 min
 python examples/demo_d_arm/fold_zone.py                                # parts 2-3: tracking next to the wall
-python examples/demo_d_arm/precision.py --workers 5                     # part 4: a needle at the ball's centre, ~4 min
+python examples/demo_d_arm/precision.py --workers 5                     # part 4: a needle at the ball's centre, ~7 min
 python examples/demo_d_arm/video.py --seed 9                           # catch.mp4 and catch.gif
 python examples/demo_d_arm/figures.py                                  # summary.png, visibility.png, fold_zone.png
 ```
@@ -123,7 +123,7 @@ model instead:
 better than the centroids (1.37 mm for ours, 1.42 mm for AFRT; table above).
 - It needs every image of the ball's surface (where the wall shows part of it twice, or clips it) and the Jacobian of
   each. One AFRT start gives one image per surface point and no derivative; with finite differences of its own
-  iterations it can make the same fit, at about 14 times the cost (part 4).
+  iterations it can make the same fit, at about 18 times the cost (part 4).
 - A ray tracer could predict the same blobs by rendering each guess of the ball's position, at the cost of rendering
   frames inside a fit.
 
@@ -148,35 +148,76 @@ tip at the ball's centre.
 
 | Perception | How it locates the ball | The window's closed forms |
 |---|---|---|
-| **ours, whole ball** | part 3's fit: every image of the ball's surface by `project()`, weighted with `image_jacobians` | used |
+| **ours, whole ball** | part 3's fit: every image of the ball's surface by `project()`, weighted with `image_jacobians`, with two safeguards next to the caustic (below) | used |
 | AFRT alone, whole ball | the same fit with AFRT only: each surface point's image from one AFRT start, every derivative by finite differences of AFRT (`afrt_ball.py`) | none |
 | AFRT, blob centroids | parts 1–2's AFRT perception | none |
 | pinhole + distortion | parts 1–2 | none |
 
 **Results** (`precision_out.txt`):
 
-| Perception | Open water: succeed, median error | Next to the wall: succeed, median error | Time per estimate |
-|---|---:|---:|---:|
-| **ours, whole ball** | **20 of 20**, 0.016 mm | **19 of 20**, 0.027 mm | **0.9 s** |
-| AFRT alone, whole ball | 20 of 20, 0.025 mm | 18 of 20, 0.023 mm | 13 s |
-| AFRT, blob centroids | 20 of 20, 0.35 mm | 5 of 20, 1.0 mm | 0.005 s |
-| pinhole + distortion | 2 of 20, 1.1 mm | 0 of 20, 12 mm | 0.001 s |
+| Perception | Open water: succeed, median error | Next to the wall: succeed, median error | Next to the wall: largest error | Time per estimate |
+|---|---:|---:|---:|---:|
+| **ours, whole ball** | **20 of 20**, 0.016 mm | **20 of 20**, 0.024 mm | **0.05 mm** | **1.8 s** |
+| AFRT alone, whole ball | 20 of 20, 0.023 mm | 20 of 20, 0.026 mm | 0.36 mm | 33 s |
+| AFRT, blob centroids | 20 of 20, 0.35 mm | 5 of 20, 1.0 mm | 3.5 mm | 0.007 s |
+| pinhole + distortion | 2 of 20, 1.1 mm | 0 of 20, 12 mm | 18 mm | 0.002 s |
 
 ![the needle task: success against tolerance](precision.png)
 
 - **Fitting the whole ball is what lands the needle next to the wall.** From blob centroids AFRT succeeds in 5 of 20
-  placements there; fitted to the whole ball, in 18.
-- **AFRT alone can make that fit, at 14 times the cost.** With finite differences of its own iterations it is about
-  as accurate as ours here.
-  - It lacks the second images of the parts of the ball the wall shows twice. It leaves that blob out of the fit,
-    which costs little in this test.
-  - The exception is where the ball's centre itself is seen twice: in one such placement ours lands 0.30 mm from the
-    centre and AFRT 0.86 mm.
-- **Ours predicts every blob and uses it,** in under a second on one core, with the derivative in closed form. In the
-  open water it is also the most precise: every tip within 0.03 mm.
+  placements there; fitted to the whole ball, in 20.
+- **AFRT alone can make that fit, at 18 times the cost,** and it lands every placement within 0.5 mm. Next to the wall
+  it is less precise: 17 of 20 placements within 0.1 mm, against 20 of 20 for ours.
+  - In its two largest errors (0.18 and 0.36 mm), one camera's blob shows about a fifth of its surface points twice:
+    the wall shows that part of the ball twice, and the two copies merge into one blob. AFRT finds one image per
+    point, so it mispredicts that blob.
+  - Its third error above 0.1 mm (0.13 mm) has no double image. Its cause was not traced.
+  - Where the two copies make separate blobs, AFRT leaves the blob it cannot predict out of the fit, which costs
+    nothing here.
+- **Ours predicts every blob and uses it,** in 1.8 s per estimate, with the derivative in closed form. In the open
+  water it is also the most precise: every tip within 0.03 mm.
 - **The detector.** Part 4 samples its coarse pass every 2 × 2 pixels (parts 1–3: 4 × 4). At 4 × 4 it missed a small
   second copy of the ball (17 px of 430, 53 px from the main blob), exactly a part that AFRT does not predict, and
   that biased ours' fit in one trial.
+
+### Where the fit missed, and two safeguards
+
+Without the two safeguards below, ours missed one placement next to the wall (0.52 mm from the centre), and AFRT
+alone missed two (0.86 and 1.53 mm).
+- **It was neither the projection nor a stuck fit.** The ball sat 137.7 mm from the axis, just past where the wall
+  starts to hide points or show them twice (135 mm). Camera 2 saw it across the caustic: a fifth of the ball's
+  surface had no image there and a quarter had two, smeared into a 46 px streak that ends at the caustic. The fit's
+  cost was lower at its estimate (0.47 px²) than at the true centre (1.63 px²). It had found the best match to a
+  prediction that was off.
+- **400 surface points were too few there.** The fit predicts each blob from 400 points on the ball, each weighted by
+  the image area it covers. Next to the caustic that area grows without bound, so the one or two points nearest to it
+  decide the prediction.
+  - At the true centre, camera 2's prediction was 1.3 px off with 400 points, 0.9 px with 1,600, 5.3 px with 6,400
+    and 0.03 px with 25,600. Cameras 0 and 1 matched to 0.05 px.
+  - The fit moved the centre 0.52 mm to absorb camera 2's error. AFRT alone missed the same placement by 1.53 mm.
+- **A second cause** (0.16 mm, a success): the detector missed a sliver of the ball seen twice, 0.7 px wide and 52 px
+  from the main blob. The fit counted the sliver's predicted image into the main blob, the nearest one, and that
+  shifted the blob's prediction by 0.5 px.
+
+Both whole-ball fits now take two safeguards (`ball_image.fit(..., weigh=True)`, given each blob's pixels by
+`detect(..., regions=True)`):
+1. **Each blob counts as much as it can be predicted.**
+   - It is predicted from two sets of 400 surface points, the second a rotation of the first.
+   - Their mean is the prediction, and half their difference, s, is its uncertainty.
+   - The blob's residual is weighted by 1 / √(0.1² + s²) per pixel.
+
+   At the missed placement's true centre the two sets differ by 2.8 px for camera 2, against 0.002 and 0.014 px for
+   cameras 0 and 1, so camera 2 counts for little.
+2. **A predicted image counts toward a blob only if it lands on it,** within 3 px of the blob's pixels. A piece of the
+   ball the detector missed then biases no blob.
+
+| Placement next to the wall | ours, before → after | AFRT alone, before → after |
+|---|---:|---:|
+| the miss, 137.7 mm from the axis | 0.524 → 0.029 mm | 1.529 → 0.357 mm |
+| a camera sees the ball's centre twice, 138.6 mm | 0.301 → 0.023 mm | 0.862 → 0.176 mm |
+| the undetected sliver, 138.7 mm | 0.159 → 0.015 mm | 0.016 → 0.015 mm |
+
+The safeguards double the work per estimate. Parts 2–3 run the fit without them.
 
 **Limits:**
 - the frames are synthetic, with no noise, blur or reflections;

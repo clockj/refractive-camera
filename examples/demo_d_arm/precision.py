@@ -1,6 +1,6 @@
 """Demo D, part 4: putting a needle at the ball's centre.
 
-    python examples/demo_d_arm/precision.py --workers 5       # about 20 minutes
+    python examples/demo_d_arm/precision.py --workers 5       # about 7 minutes
 
 The ball rests at a point of the tank (tethered: it does not move, so perception alone decides), and the arm, holding
 a needle on the slim tool's shaft, must put the needle's tip at the ball's centre.  It knows the ball only from the
@@ -16,6 +16,9 @@ Four perceptions estimate the centre from the same frames:
     derivative by finite differences of AFRT (afrt_ball.py), no closed form of the window;
   * AFRT, blob centroids: parts 1-2's AFRT perception (each blob's centroid taken as the image of the centre);
   * pinhole + distortion: each camera's OpenCV model calibrated through the tank (parts 1-2).
+Both whole-ball fits take the blobs' pixels (an image of the surface joins the blob it lands on) and weigh each blob
+by how well two sets of surface points agree on its prediction (`ball_image.fit`, weigh=True): next to a caustic a
+few points decide a blob's predicted centroid.
 40 placements: 20 in the open water (40-120 mm from the axis) and 20 next to the wall (136-160 mm).
 """
 import argparse
@@ -73,8 +76,8 @@ def pinhole_fits():
     return [rc.Camera(f["K"], f["R"], f["t"], f["dist"], D.SIZE) for f in json.loads(path.read_text())]
 
 
-def estimate(kind, blobs, cams, fits):
-    """The perception's estimate of the centre (3,), or None."""
+def estimate(kind, blobs, cams, fits, regions):
+    """The perception's estimate of the centre (3,), or None.  regions: each camera's blobs' pixels."""
     if kind in ("ours_ball", "afrt_ball", "afrt"):
         per = D.Refractive(cams) if kind == "ours_ball" else D.AFRTPerception(cams)
         X0 = per.locate(blobs, None)
@@ -85,9 +88,10 @@ def estimate(kind, blobs, cams, fits):
         if kind == "afrt":
             return X1
         lib = ball_image if kind == "ours_ball" else afrt_ball
-        obs = [(c, lib.blobs_near(X1, c, D.TANK, b)) for c, b in zip(cams, blobs)]
-        obs = [(c, b) for c, b in obs if len(b)]
-        X, rms = lib.fit(obs, X1, D.TANK, D.BALL_RGB)
+        obs = [(c, *lib.blobs_near(X1, c, D.TANK, b, regions=reg)) for c, b, reg in zip(cams, blobs, regions)]
+        obs = [o for o in obs if len(o[1])]
+        # an image joins the blob it lands on, and each blob counts as well as its two predictions agree (ball_image)
+        X, rms = lib.fit(obs, X1, D.TANK, D.BALL_RGB, weigh=True)
         return X if np.all(np.isfinite(X)) and rms < 2.0 else X1
     per = D.Pinhole(fits)
     X0 = per.locate(blobs, None)
@@ -156,14 +160,15 @@ def trial(args):
     objs = D.inside_objects(X, arm.tool_parts(m, d, arm.NEEDLE_GEOMS))
     # a finer coarse pass than parts 1-3 (one sample per 2 x 2 pixels): at 4 x 4 the detector missed small second
     # copies of the ball (17 px of 430 in one frame, 53 px from the main blob), the very part one AFRT start lacks
-    blobs = [D.detect(c, objs, factor=2) for c in cams]
+    found = [D.detect(c, objs, factor=2, regions=True) for c in cams]
+    blobs, regions = [b for b, _ in found], [p for _, p in found]
     fits = pinhole_fits()
     seen = [int(rc.project(X, c, D.TANK).counts()[0]) for c in cams]
     row = {"i": i, "X": X.tolist(), "near_wall": bool(near), "r_mm": 1e3 * float(np.hypot(*(X[:2] - arm.TANK_XY))),
            "images_per_camera": seen, "blobs_per_camera": [int(len(b)) for b in blobs]}
     for kind in KINDS:
         t0 = time.perf_counter()
-        est = estimate(kind, blobs, cams, fits)
+        est = estimate(kind, blobs, cams, fits, regions)
         dt = time.perf_counter() - t0
         if est is None:
             row[kind] = {"estimate": None, "error_mm": None, "tip_error_mm": None, "contacts": 0, "time_s": dt}

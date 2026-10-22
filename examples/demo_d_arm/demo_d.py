@@ -96,8 +96,9 @@ def orange(rgb):
     return np.clip((rgb[..., 0] - rgb[..., 2] - 0.35) / 0.3, 0, 1) * (rgb[..., 1] < 0.75 * rgb[..., 0])
 
 
-def detect(cam, objs, factor=4, ss=2):
-    """Ball blobs: a coarse frame finds them, a supersampled crop around each measures its centroid."""
+def detect(cam, objs, factor=4, ss=2, regions=False):
+    """Ball blobs: a coarse frame finds them, a supersampled crop around each measures its centroid.  Returns (k, 3):
+    centroid and mass; with `regions`, also each blob's pixels (a list of (n, 2) arrays)."""
     from scipy import ndimage
     W, H = cam.size
     Wc, Hc = W // factor, H // factor
@@ -105,7 +106,7 @@ def detect(cam, objs, factor=4, ss=2):
     uv = np.c_[U.ravel(), V.ravel()] * factor + (factor - 1) / 2
     coarse = orange(render_pixels(cam, uv, objs)).reshape(Hc, Wc) > 0.2
     lab, n = ndimage.label(ndimage.binary_dilation(coarse, iterations=2))
-    blobs = []
+    blobs, pixels = [], []
     off = (np.arange(ss) + 0.5) / ss - 0.5
     for sl in ndimage.find_objects(lab):
         v0, v1 = max(sl[0].start * factor - 6, 0), min(sl[0].stop * factor + 6, H)
@@ -121,7 +122,9 @@ def detect(cam, objs, factor=4, ss=2):
                 continue                                    # a sliver too faint to measure
             vv, uu = np.nonzero(m)
             blobs.append((np.sum(w[m] * (uu + u0)) / w[m].sum(), np.sum(w[m] * (vv + v0)) / w[m].sum(), w[m].sum()))
-    return np.array(blobs).reshape(-1, 3)
+            pixels.append(np.c_[uu + u0, vv + v0].astype(float))
+    blobs = np.array(blobs).reshape(-1, 3)
+    return (blobs, pixels) if regions else blobs
 
 
 # ---- perception ---------------------------------------------------------------------------------------------------
