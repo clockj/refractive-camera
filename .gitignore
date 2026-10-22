@@ -21,3 +21,7 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# ---- Demo caches (renders, features, intermediate results) ----
+examples/*/_cache/
+benchmarks/_cases_pinhole.npz

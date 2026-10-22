@@ -1,0 +1,20 @@
+Demo C, part 2: derivatives on the 29008 trained Gaussians of ours, 12 test views, device cuda; AFRT capped at 300 iterations
+  ours: 328038 images of Gaussians over the views; AFRT converged for 322975 Gaussian-views, all of them one image of ours (322975 matched within 1e-3 px); slowest AFRT point per view took 300-300 iterations
+
+1. The Jacobian d(uv)/dX against ours (relative error, Frobenius norm):
+  AFRT, central differences, h = 0.0001 m   : median 1.7e-07, 99th pct 1.4e-04, max 1.8e-02; off by more than 1 %: 0.01 %; next to a caustic (top 5 % of |J|): median 1.3e-05, 99th pct 4.0e-03; not finite 218
+  AFRT, central differences, h = 1e-05 m    : median 8.5e-08, 99th pct 8.8e-06, max 3.0e-04; off by more than 1 %: 0.00 %; next to a caustic (top 5 % of |J|): median 7.4e-07, 99th pct 5.6e-05; not finite 19
+  AFRT, central differences, h = 1e-06 m    : median 8.4e-08, 99th pct 2.9e-06, max 3.6e-04; off by more than 1 %: 0.00 %; next to a caustic (top 5 % of |J|): median 8.7e-07, 99th pct 5.1e-05; not finite 2
+  autograd through AFRT's iterations        : median 8.4e-08, 99th pct 2.5e-06, max 1.6e-04; off by more than 1 %: 0.00 %; next to a caustic (top 5 % of |J|): median 8.6e-07, 99th pct 1.3e-05; not finite 0
+
+2. Time per view (all Gaussians, same GPU):
+  ours, a training step: Newton from the last momenta + the analytic J    :     68.4 ms
+  ours, a refresh: project() finds every image (C++, CPU, 8 threads)      :    895.6 ms
+  AFRT, pixels only                                                       :   1044.6 ms
+  AFRT + central differences (h = 1e-5 m)                                 :   7624.1 ms
+  AFRT + autograd through its iterations                                  :  38680.9 ms
+  autograd's peak GPU memory, 4000 Gaussians at a time: 883 MB
+
+3. Pixels that show an image AFRT does not find: 1280 of the 188774 pixels that see a stone in the water (0.68 %), in 10 of 12 test views
+  ours                                    : PSNR on those pixels 14.5 dB; on the other stone pixels 26.1 dB
+  pinhole + AFRT (its own trained model)  : PSNR on those pixels 11.7 dB; on the other stone pixels 26.1 dB

@@ -4,7 +4,9 @@ Camera models that see through curved windows. For a 3-D point behind a cylindri
 water-filled tube, a pipe, a spherical tank), `project()` finds **every** pixel where the point appears: none when
 the wall hides it, one, or several. Flat windows (tank walls, flat ports) are covered too.
 
-![A dot moving inside a water-filled tube, seen by three cameras](examples/demo_a_localization/animation.gif)
+![A robot arm catches a ball in a water tank; it sees the ball only through the tank's curved wall](examples/demo_d_arm/catch.gif)
+
+*A Franka arm (MuJoCo) with a slim gripper catches a ball swimming next to the wall of a water tank; it sees the ball only through the curved wall, with three cameras. Left: its perception models the refraction with `project()`. Right: pinhole + distortion cameras calibrated through the tank. The rings show where each expects the ball in two of the cameras: ours draws two where the wall shows the ball twice, and none where the wall hides it. [Demo D](examples/demo_d_arm/README.md).*
 
 > **Status: early development (0.1.0.dev0).** The projection is complete and validated (below); the API may still
 > change. Robotics integration (NVIDIA Isaac Sim) is being prepared: [docs/isaac_validation.md](docs/isaac_validation.md).
@@ -32,8 +34,12 @@ pip install .            # from a checkout; builds the compiled core if a C++17 
 - **Requirements.** Python 3.10 or later, NumPy and mpmath.
 - **Without a compiler** the package installs as pure Python. That is the same search, about 100 times slower.
 - **Check.** `refractive_camera.available_backends()` says which backends you have.
-- **Optional dependencies.** The examples need `pip install .[demo]` (matplotlib, scipy, Pillow), and the tests
-  `pip install .[test]`.
+- **Optional dependencies.**
+  - Demo A: `pip install .[demo]` (matplotlib, scipy, Pillow).
+  - Demo B: `.[sfm]`, which adds OpenCV and pycolmap.
+  - Demo C: `.[splat]`, which adds PyTorch.
+  - Demo D: `.[robot]`, which adds MuJoCo and imageio.
+  - The tests: `.[test]`.
 
 ## Quick start
 
@@ -68,6 +74,8 @@ Also in the package:
 |---|---|
 | `trace()`, `back_project()` | Vector-Snell ray tracing through the window: from pixels to the line each one sees inside |
 | `triangulate()` | A point from pixels in two or more cameras: back-projected lines, then reprojection refinement |
+| `image_jacobians()` | How each image's pixel moves with its point and with the camera's pose (cylinders): analytic, for bundle adjustment and differentiable rendering |
+| `scene.render_scene()` | A ray-traced renderer of textured objects behind (and in front of) the window, with the true hit point of every pixel |
 | `render_dots()` | A small ray-traced renderer of dots behind the window, for synthetic data |
 | `tracing.search_images()` | A brute-force image search by tracing alone, used to validate `project()` |
 | `baselines.afrt()` | A published iterative method (AFRT, Belden 2013), for comparison |
@@ -75,13 +83,78 @@ Also in the package:
 
 Conventions (OpenCV cameras, media numbered from the camera inward) are in [docs/conventions.md](docs/conventions.md).
 
-## Demo: locating a target through a water-filled tube
+## Where does a point appear?
+
+Through a curved window the question has 0, 1 or 2 answers. Three camera models answer it for points in the
+water-filled reference tube:
+- **`project()`;**
+- **AFRT,** an iterative method from one start;
+- **a pinhole camera with OpenCV distortion,** the model of OpenCV, COLMAP and ROS, here calibrated through the
+  tube on points filling the water: its best case.
+
+The truth comes from a brute-force search by tracing. ([benchmarks/cases.py](benchmarks/README.md))
+
+| Points | `project()` | AFRT, one start | Pinhole + distortion |
+|---|---:|---:|---:|
+| ordinary, anywhere in the water | **100 %** | 99 % | 2 % (13 px off) |
+| seen twice | **100 %** | 0 %: one of the two | 0 % (52 px off) |
+| hidden by the wall | **100 %** | 100 % | 0 %: it "sees" every one |
+| at the edge of the two-image band | **100 %** | 0 % | 0 % (47 px off) |
+| within 9 mm of the wall | **100 %** | 94 % | 0 % (30 px off) |
+
+![cases](benchmarks/cases.png)
+
+**The pinhole + distortion camera** is the camera model of OpenCV and COLMAP:
+- a pinhole projection with focal lengths and a principal point;
+- a lens polynomial in the radius, (k1, k2, k3), plus tangential terms (p1, p2).
+
+Calibrating it through the window lets the polynomial absorb what it can of the refraction. It cannot absorb
+everything:
+- the bending depends on the point's depth along the ray, not only on its direction;
+- the refracted rays do not meet at one centre;
+- through a curved window a point can have two images, or none, while a lens maps each point to exactly one.
+
+## Demos
+
+Four demos, each with its README, its script and its numbers. Every image they use is ray-traced through the window
+by the package's own renderer (`refractive_camera.scene`), which uses none of the projection's equations, so no
+comparison is circular. Each demo keeps its renders and models in a `_cache/` folder beside it; set `REFCAM_CACHE` to
+keep them elsewhere.
+
+| Demo | What it shows | Refractive model (ours) | Without a refractive model |
+|---|---|---|---|
+| [A. Locating a target](examples/demo_a_localization/README.md) | three cameras track a 1 mm dot in the tube | 0.001 mm rms near the axis, 0.09 mm near the wall | pinhole + distortion: 0.94 mm and 8.1 mm |
+| [B. Structure from motion](examples/demo_b_sfm/README.md) | a robot-held camera circles the tube; 60 views give its poses and the stones inside | 0.24 mm (median 3-D error), from robot priors of 2 mm | pinhole + distortion: 36 mm; COLMAP: 2 of 60 views registered (60 of 60 without the tube) |
+| [C. Gaussian splatting](examples/demo_c_splatting/README.md) | 3-D Gaussian splatting of the stones, each Gaussian drawn at every image; the same Gaussians drawn with the tube taken away | 31.7 dB test PSNR (28.7 dB from new poses); Gaussians 1.0 mm from the true surface; 31.6 dB without the tube | AFRT's images + our Jacobian: 31.7 dB (28.8 dB), 1.0 mm; pinhole + distortion: 24.0 dB (22.2 dB), 2.1 mm, 21.8 dB without the tube; pinhole: 23.3 dB (21.4 dB), 3.9 mm, 19.1 dB |
+| [D. A robot arm catches a ball](examples/demo_d_arm/README.md) | a Franka with a slim gripper reaches into a water tank; it sees the ball only through the wall | 40 of 40 caught; 20 of 20 next to the wall | pinhole + AFRT: 40 of 40, 20 of 20; pinhole + distortion: 28 of 40, 8 of 20 |
+
+**What the comparisons show:**
+- **A pinhole camera cannot stand in for a curved window,** even calibrated through it. Its errors are millimetres to
+  centimetres, and they grow towards the wall: next to it, it caught 8 balls of 20 (D).
+- **To triangulate a target, one image per camera is enough.** Any image, traced back through the wall, gives a ray
+  through the target, so an iterative method from one start (AFRT) ties with `project()` in tracking and catching
+  (A, D) and in bundle adjustment (B).
+- **Where the projection itself is the measurement, the complete projection and its derivative count:**
+  - **the ball's whole image** (D, part 3): ours fits the ball to its stretched, clipped or doubled blobs to 0.03 mm
+    next to the wall, against 1.4 mm for AFRT and for ours from centroids;
+  - **one camera** (D, part 3): where it sees the ball twice, its two rays cross at the ball; ours locates it to
+    0.5 mm, while AFRT, knowing one image, gets a ray;
+  - **splatting** (C): pixels that show an image AFRT does not find render at 14.5 dB against 11.7 dB, and the Jacobian
+    a rasterizer needs costs 68 ms per view for ours, against 7.6 s for AFRT with finite differences.
+
+  In Demos B and C the AFRT variants were given our Jacobian, so their scores there isolate which images each method
+  finds.
+
+![Demo B: structure from motion around the tube](examples/demo_b_sfm/summary.png)
+
+### Demo A: locating a target through a water-filled tube
 
 `python examples/demo_a_localization/demo_a.py` (about 6 minutes; [details](examples/demo_a_localization/README.md))
 
+![A dot moving inside a water-filled tube, seen by three cameras](examples/demo_a_localization/animation.gif)
+
 - **The scene.** Three cameras watch a 1 mm dot inside the reference tube. The dot spirals out to the wall, then
   circles it.
-- **The frames** are rendered by tracing rays through the tube, without the projection's equations.
 - **Localisation.** The dot is located from the detected blobs in two ways: with the refractive model, and with a
   pinhole camera with lens distortion calibrated through the tube on a dot grid near the axis.
 
@@ -95,11 +168,6 @@ sees it twice in 5.
 - `project()` predicts both events.
 - AFRT returns one of the two images.
 - The pinhole camera knows neither.
-
-**Near the wall.** The refractive model's remaining error there comes from the dot's size, not the model. A finite
-dot's centroid is not the image of its centre where the magnification changes across it.
-
-![Demo A summary](examples/demo_a_localization/summary.png)
 
 ## Validation and speed
 

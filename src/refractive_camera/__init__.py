@@ -13,6 +13,7 @@ windows", arXiv:2610.17413 (2026).
 """
 from .camera import Camera
 from .flat import FlatWindow
+from .jacobian import image_jacobians
 from .projection import Images, available_backends, project
 from .render import render_dots
 from .tracing import Trace, back_project, trace
@@ -22,4 +23,4 @@ from .windows import CylindricalWindow, SphericalWindow
 __version__ = "0.1.0.dev0"
 
 __all__ = ["Camera", "CylindricalWindow", "SphericalWindow", "FlatWindow", "Images", "Trace", "available_backends",
-           "back_project", "project", "render_dots", "trace", "triangulate", "__version__"]
+           "back_project", "image_jacobians", "project", "render_dots", "trace", "triangulate", "__version__"]

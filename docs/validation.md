@@ -38,6 +38,17 @@ The suite runs in about 30 s with the compiled core, and about 2.5 min on pure P
   None failed.
 - **The AFRT baseline** (`baselines.afrt`) gives bit-identical status, iterations and rays to the implementation
   used in the paper, on 600 points.
+- **The image Jacobians** (`image_jacobians`, cylinders) give how each image's pixel moves with its point and with
+  the camera.
+  - **SymPy:** every partial derivative in their chain was checked step by step (54 steps, all proved).
+  - **Against `project()`:** compared with central differences of `project()` itself, the median relative error is
+    3e-10 and the largest 1e-6. That is over 457 images away from caustics, seen from four camera poses, on both
+    branches.
+  - **Against the tracer alone:** inverting the Jacobian of (u, v, s) → X taken by finite differences of the tracer,
+    the median error is 1e-9. The worst images, next to the shadow's edge, converge as the step shrinks.
+- **The scene renderer** (`refractive_camera.scene`) renders textured objects behind a window.
+  - With every index set to 1, its hits equal straight-ray intersections to 1e-12.
+  - Every point it hits inside the tube projects back to its own pixel by `project()`, to within 1e-6 px.
 
 ## The paper's evidence
 

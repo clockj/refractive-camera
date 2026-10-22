@@ -91,3 +91,31 @@ returned nothing at the shadow points, which is the right answer there.
 
 **Machine:** Intel Core i9-13900K, Windows 11 (build 26200), Python 3.11.16, NumPy 2.4.6. The compiled core was
 built by `setup.py` with MSVC 19.40 (`/O2 /GL /std:c++17`).
+
+## Where does a point appear? Three camera models (`cases.py`)
+
+```sh
+python benchmarks/cases.py          # about 5 minutes; cases_out.txt, cases.json, cases.png
+```
+
+Three camera models look at points in the water-filled reference tube from 0.35 m (f = 2000 px). Each says where the
+point appears:
+- **`project()`;**
+- **AFRT** from one start;
+- **a pinhole camera with OpenCV distortion,** the camera model of OpenCV, COLMAP and ROS. It is fitted through the
+  tube on 5,500 points filling the water, its best case. It still fits them only to 19 px rms, with fx = 10,711 px
+  for a true 2,000.
+
+**The truth** is defined as in the benchmark: every candidate ray, from a brute-force search by tracing alone, from
+`project()` and from AFRT, kept if tracing confirms that it reaches the point. **An answer is right** when it has the
+true number of images, each within 1 px of a true one.
+
+| Points | `project()` | AFRT, one start | Pinhole + distortion |
+|---|---:|---:|---:|
+| ordinary, anywhere in the water (100) | **100 %** | 99 % | 2 % (13 px off, median) |
+| seen twice (50) | **100 %** | 0 %: one of the two | 0 % (52 px off) |
+| hidden by the wall (50) | **100 %** | 100 % | 0 %: it "sees" every one |
+| at the edge of the two-image band (34) | **100 %** | 0 % | 0 % (47 px off) |
+| within 9 mm of the wall (100) | **100 %** | 94 % | 0 % (30 px off; "sees" 28 hidden points) |
+
+![cases](cases.png)

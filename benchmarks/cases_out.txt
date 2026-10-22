@@ -1,0 +1,30 @@
+Pinhole + distortion fitted through the tube on 5508 points filling the water: 18.89 px rms, fx = 10711, fy = 8711, k1 = 41.188 (true camera: f = 2000, no distortion)
+
+ordinary (100 points):
+  refractive (ours)      right at 100 of 100 (100.0 %)   
+  AFRT, one start        right at  99 of 100 ( 99.0 %)   misses an image: 1
+  pinhole + distortion   right at   2 of 100 (  2.0 %)   sees a hidden point: 8, wrong place: 90
+  pinhole + distortion: median distance to the nearest true image 13.0 px
+
+seen twice (50 points):
+  refractive (ours)      right at  50 of 50 (100.0 %)   
+  AFRT, one start        right at   0 of 50 (  0.0 %)   misses an image: 50
+  pinhole + distortion   right at   0 of 50 (  0.0 %)   wrong place: 50
+  pinhole + distortion: median distance to the nearest true image 51.8 px
+
+hidden (50 points):
+  refractive (ours)      right at  50 of 50 (100.0 %)   
+  AFRT, one start        right at  50 of 50 (100.0 %)   
+  pinhole + distortion   right at   0 of 50 (  0.0 %)   sees a hidden point: 50
+
+edge (34 points):
+  refractive (ours)      right at  34 of 34 (100.0 %)   
+  AFRT, one start        right at   0 of 34 (  0.0 %)   misses an image: 34
+  pinhole + distortion   right at   0 of 34 (  0.0 %)   wrong place: 34
+  pinhole + distortion: median distance to the nearest true image 46.7 px
+
+near the wall (100 points):
+  refractive (ours)      right at 100 of 100 (100.0 %)   
+  AFRT, one start        right at  94 of 100 ( 94.0 %)   misses an image: 6
+  pinhole + distortion   right at   0 of 100 (  0.0 %)   sees a hidden point: 28, wrong place: 72
+  pinhole + distortion: median distance to the nearest true image 30.0 px

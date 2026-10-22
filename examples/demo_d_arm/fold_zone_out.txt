@@ -1,0 +1,13 @@
+Demo D, parts 2-3: 20 paths of 16 s, 140-162 mm from the axis; 2520 s
+ours, blob centroids  : a 3-D measurement in  95.0 % of frames, its error median 1.37 mm (95th pct 3.76); the filter's error median 1.49 mm, 95th pct 4.22 mm, max 16.5 mm; paths off by more than 20 mm: 0 of 20
+ours, whole ball      : a 3-D measurement in  95.0 % of frames, its error median 0.03 mm (95th pct 0.52); the filter's error median 0.12 mm, 95th pct 1.07 mm, max 30.3 mm; paths off by more than 20 mm: 7 of 20
+pinhole + AFRT        : a 3-D measurement in  95.0 % of frames, its error median 1.42 mm (95th pct 3.72); the filter's error median 1.50 mm, 95th pct 4.26 mm, max 16.5 mm; paths off by more than 20 mm: 0 of 20
+pinhole + distortion  : a 3-D measurement in  95.0 % of frames, its error median 15.06 mm (95th pct 60.10); the filter's error median 14.88 mm, 95th pct 59.30 mm, max 169.3 mm; paths off by more than 20 mm: 20 of 20
+
+What the cameras show over all frames (camera-frames 19200): no image 22.0 %, one 73.5 %, two 4.5 %
+AFRT finds an image in 100.0 % of the camera-frames where the ball is visible; both images where it is seen twice: never (one start returns one ray)
+
+One camera alone, in the 267 camera-frames where it shows the ball as two blobs:
+  the two rays' crossing: a point that explains both blobs in 98 %, error median 16.8 mm
+  then the whole-ball fit: accepted in 82 %, error median 0.50 mm, 90th pct 1.71 mm; within 1 mm 72 % of those
+  pinhole + AFRT: one image per camera, so one ray, not a point; pinhole + distortion: two straight lines through the camera's centre, which meet only there

@@ -1,0 +1,71 @@
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 0 s
+
+== pinhole
+    pinhole   it     0  loss 0.1648  gaussians 10000  0 s
+    pinhole   it   500  loss 0.0661  gaussians 5890  126 s
+    pinhole   it  1000  loss 0.0359  gaussians 13639  252 s
+    pinhole   it  1500  loss 0.0363  gaussians 17847  436 s
+    pinhole   it  2000  loss 0.0592  gaussians 21408  643 s
+    pinhole   it  2500  loss 0.0471  gaussians 23997  886 s
+    pinhole   it  3000  loss 0.0420  gaussians 23997  1146 s
+    pinhole   it  3500  loss 0.0264  gaussians 23997  1427 s
+    pinhole   it  3999  loss 0.0340  gaussians 23997  1718 s
+  test PSNR 23.30 dB (water 21.50, near the wall 17.49), SSIM 0.899; opaque centres to the true surface: median 3.88 mm
+
+== pinhole_dist
+  per-camera OpenCV fits through the tube: rms 2.79 px median, 3.00 px max, on 3674 points each
+    pinhole   it     0  loss 0.1943  gaussians 10000  1 s
+    pinhole   it   500  loss 0.0635  gaussians 5389  137 s
+    pinhole   it  1000  loss 0.0320  gaussians 13810  256 s
+    pinhole   it  1500  loss 0.0300  gaussians 18321  430 s
+    pinhole   it  2000  loss 0.0451  gaussians 21875  640 s
+    pinhole   it  2500  loss 0.0439  gaussians 24432  885 s
+    pinhole   it  3000  loss 0.0370  gaussians 24432  1152 s
+    pinhole   it  3500  loss 0.0209  gaussians 24432  1434 s
+    pinhole   it  3999  loss 0.0273  gaussians 24432  1723 s
+  test PSNR 24.02 dB (water 22.25, near the wall 15.84), SSIM 0.904; opaque centres to the true surface: median 2.06 mm
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 0 s
+
+== refractive
+    refractive it     0  loss 0.1759  gaussians 10000  2 s
+    refractive it   500  loss 0.0597  gaussians 7770  158 s
+    refractive it  1000  loss 0.0194  gaussians 20894  311 s
+    refractive it  1500  loss 0.0120  gaussians 25329  563 s
+    refractive it  2000  loss 0.0199  gaussians 27502  857 s
+    refractive it  2500  loss 0.0124  gaussians 29008  1179 s
+    refractive it  3000  loss 0.0110  gaussians 29008  1523 s
+    refractive it  3500  loss 0.0062  gaussians 29008  1866 s
+    refractive it  3999  loss 0.0070  gaussians 29008  2222 s
+  test PSNR 31.74 dB (water 30.81, near the wall 24.66), SSIM 0.979; opaque centres to the true surface: median 0.99 mm
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 37 s
+
+== refractive
+  test PSNR 31.74 dB (water 30.81, near the wall 24.66), SSIM 0.979; opaque centres to the true surface: median 0.99 mm
+  far views: PSNR 28.69 dB (water 27.35, near the wall 22.46), SSIM 0.959
+
+== pinhole
+  test PSNR 23.30 dB (water 21.50, near the wall 17.49), SSIM 0.899; opaque centres to the true surface: median 3.88 mm
+  far views: PSNR 21.41 dB (water 19.41, near the wall 15.86), SSIM 0.824
+
+== pinhole_dist
+  per-camera OpenCV fits through the tube: rms 2.79 px median, 3.32 px max, on 3674 points each
+  test PSNR 24.02 dB (water 22.25, near the wall 15.84), SSIM 0.904; opaque centres to the true surface: median 2.06 mm
+  far views: PSNR 22.20 dB (water 20.23, near the wall 14.50), SSIM 0.860
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 0 s
+
+== afrt
+    afrt      it     0  loss 0.1742  gaussians 10000  5 s
+    afrt      it   500  loss 0.0606  gaussians 7772  167 s
+    afrt      it  1000  loss 0.0190  gaussians 20768  327 s
+    afrt      it  1500  loss 0.0120  gaussians 25026  594 s
+    afrt      it  2000  loss 0.0211  gaussians 27068  909 s
+    afrt      it  2500  loss 0.0122  gaussians 28442  1246 s
+    afrt      it  3000  loss 0.0112  gaussians 28442  1607 s
+    afrt      it  3500  loss 0.0064  gaussians 28442  1971 s
+    afrt      it  3999  loss 0.0073  gaussians 28442  2344 s
+  test PSNR 31.66 dB (water 30.63, near the wall 24.34), SSIM 0.979; opaque centres to the true surface: median 0.99 mm
+  far views: PSNR 28.80 dB (water 27.39, near the wall 22.40), SSIM 0.959

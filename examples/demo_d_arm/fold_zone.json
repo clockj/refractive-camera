@@ -1,0 +1,90 @@
+{
+ "refractive": {
+  "frames": 6000,
+  "measured": 0.9498333333333333,
+  "meas_err_median_mm": 1.371019072952964,
+  "meas_err_p95_mm": 3.764150487749869,
+  "err_median_mm": 1.4912161415447542,
+  "err_p95_mm": 4.223335813141394,
+  "err_max_mm": 16.487216348774975,
+  "frames_over_5mm": 0.022,
+  "paths_lost": []
+ },
+ "refractive_ball": {
+  "frames": 6000,
+  "measured": 0.9498333333333333,
+  "meas_err_median_mm": 0.0328455232880949,
+  "meas_err_p95_mm": 0.5193186874578897,
+  "err_median_mm": 0.1228550677380916,
+  "err_p95_mm": 1.0682398712098207,
+  "err_max_mm": 30.34930380197165,
+  "frames_over_5mm": 0.023666666666666666,
+  "paths_lost": [
+   0,
+   3,
+   5,
+   6,
+   8,
+   12,
+   16
+  ]
+ },
+ "afrt": {
+  "frames": 6000,
+  "measured": 0.9498333333333333,
+  "meas_err_median_mm": 1.4183316767909986,
+  "meas_err_p95_mm": 3.7173803083536865,
+  "err_median_mm": 1.4992390618355922,
+  "err_p95_mm": 4.258160300745066,
+  "err_max_mm": 16.47811952882058,
+  "frames_over_5mm": 0.023,
+  "paths_lost": []
+ },
+ "pinhole": {
+  "frames": 6000,
+  "measured": 0.9498333333333333,
+  "meas_err_median_mm": 15.061140998002228,
+  "meas_err_p95_mm": 60.09614209877744,
+  "err_median_mm": 14.876887592161687,
+  "err_p95_mm": 59.2950442509137,
+  "err_max_mm": 169.3072009439413,
+  "frames_over_5mm": 0.9436666666666667,
+  "paths_lost": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19
+  ]
+ },
+ "camera_frames": {
+  "none": 0.22005208333333334,
+  "one": 0.7346875,
+  "two": 0.045260416666666664,
+  "afrt_finds_visible": 1.0
+ },
+ "one_camera": {
+  "camera_frames": 267,
+  "raw_accepted": 0.9812734082397003,
+  "raw_median_mm": 16.848127426143435,
+  "fit_accepted": 0.8239700374531835,
+  "fit_median_mm": 0.5008155175902647,
+  "fit_p90_mm": 1.7127447106361777,
+  "fit_within_1mm": 0.7191011235955056
+ }
+}
