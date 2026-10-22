@@ -143,7 +143,7 @@ keep them elsewhere.
 |---|---|---|---|
 | [A. Locating a target](examples/demo_a_localization/README.md) | three cameras track a 1 mm dot in the tube | 0.001 mm rms near the axis, 0.09 mm near the wall | pinhole + distortion: 0.94 mm and 8.1 mm |
 | [B. Structure from motion](examples/demo_b_sfm/README.md) | a robot-held camera circles the tube; 60 views give its poses and the stones inside | 0.24 mm (median 3-D error), from robot priors of 2 mm | pinhole + distortion: 36 mm; COLMAP: 2 of 60 views registered (60 of 60 without the tube) |
-| [C. Gaussian splatting](examples/demo_c_splatting/README.md) | 3-D Gaussian splatting of the stones, each Gaussian drawn at every image; the same Gaussians drawn with the tube taken away | 31.7 dB test PSNR (28.7 dB from new poses); Gaussians 1.0 mm from the true surface; 31.6 dB without the tube | AFRT's images + our Jacobian: 31.7 dB (28.8 dB), 1.0 mm; pinhole + distortion: 24.0 dB (22.2 dB), 2.1 mm, 21.8 dB without the tube; pinhole: 23.3 dB (21.4 dB), 3.9 mm, 19.1 dB |
+| [C. Gaussian splatting](examples/demo_c_splatting/README.md) | 3-D Gaussian splatting of the stones, each Gaussian drawn at every image; the same Gaussians drawn with the tube taken away; training from a robot's poses | 31.9 dB test PSNR (28.8 dB from new poses); Gaussians 1.0 mm from the true surface; 31.5 dB without the tube; 30.1 dB from a robot's poses, refined as it trains | AFRT's images + our Jacobian: 31.8 dB (28.9 dB), 1.0 mm; pinhole + distortion: 24.0 dB (22.2 dB), 2.1 mm, 21.8 dB without the tube; pinhole: 23.3 dB (21.4 dB), 3.9 mm, 19.1 dB |
 | [D. A robot arm catches a ball](examples/demo_d_arm/README.md) | a Franka with a slim gripper reaches into a water tank; it sees the ball only through the wall | 40 of 40 caught; 20 of 20 next to the wall | pinhole + AFRT: 40 of 40, 20 of 20; pinhole + distortion: 28 of 40, 8 of 20 |
 | [E. A camera in an underwater housing](examples/demo_e_housing/README.md) | one camera behind a flat port, behind a dome port and inside a tube, calibrated in the water; a robot docks with it | under 0.0001 px off when calibrated on exact pixels; docking through the tube: the dock 0.9 mm off at 1–3 m, 0.5 mm in the final metre | pinhole + distortion calibrated in the water (on exact pixels): up to 77 px off through the tube, 40 px through the flat port, 0.45 px through the dome; docking through the tube: 11 mm off |
 
@@ -165,8 +165,9 @@ keep them elsewhere.
   finds.
 - **A camera inside its housing** (E): a pinhole + distortion calibrated in the water is nearly exact behind a dome
   port (0.45 px), wrong close up behind a flat port (40 px at 0.15 m), and wrong at every range inside a tube (4–10
-  px at 1–4 m, 50 px at 0.15 m). Ours, which calibrates the camera's place in its housing with the analytic
-  derivatives, is exact in all three.
+  px at 1–4 m, 50 px at 0.15 m). Ours calibrates the camera's place in its housing with the analytic derivatives.
+  It has no model error in any of the three (under 0.0001 px on exact pixels), and docking through the tube it puts
+  the dock within a millimetre where the pinhole is a centimetre off.
 
 ![Demo B: structure from motion around the tube](examples/demo_b_sfm/summary.png)
 

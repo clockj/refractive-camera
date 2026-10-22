@@ -274,7 +274,7 @@ def poses(plt, res):
     ax.invert_yaxis()
     ax.grid(axis="y", visible=False)
     ax.set_xlim(0, 1.3 * max(b + a))
-    ax.legend(loc="lower right")
+    ax.legend(ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.16))
     ax.set_title("Pose error of the 48 training cameras", pad=26)
     fig.tight_layout()
     fig.savefig(HERE / "poses.png")
@@ -337,7 +337,7 @@ def orbit(kinds):
     except OSError:
         font = ImageFont.load_default()
     W, H = D.SIZE
-    S = 2                                                     # upscale for the GIF
+    S = 4 / 3                                                 # upscale for the GIF
     frames = []
     for i, cam in enumerate(orbit_cams):
         row = [render_scene(cam, tg.TUBE, tg.objects(), supersample=2, background=D.BG)[0]]
@@ -347,11 +347,12 @@ def orbit(kinds):
             row.append(render_with("refractive" if k == "refractive" else "pinhole", gs[k], cam, dev, fit,
                                    "hybrid" if hybrid(KEY[k]) else "linear"))
             names.append((LABELS[k], fs.COLOR[k]))
-        canvas = Image.new("RGB", (len(row) * W * S + (len(row) - 1) * 6, H * S + 34), (26, 26, 25))
+        w, h = round(W * S), round(H * S)
+        canvas = Image.new("RGB", (len(row) * w + (len(row) - 1) * 6, h + 34), (26, 26, 25))
         dr = ImageDraw.Draw(canvas)
         for j, (img, (name, col)) in enumerate(zip(row, names)):
-            im = Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8)).resize((W * S, H * S), Image.LANCZOS)
-            x0 = j * (W * S + 6)
+            im = Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8)).resize((w, h), Image.LANCZOS)
+            x0 = j * (w + 6)
             canvas.paste(im, (x0, 34))
             if col is not None:
                 dr.rectangle([x0 + 8, 11, x0 + 20, 23], fill=col)

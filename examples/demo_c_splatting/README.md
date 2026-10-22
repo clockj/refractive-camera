@@ -3,6 +3,7 @@
 ```sh
 python examples/demo_c_splatting/demo_c.py              # ours, pinhole, pinhole + distortion: about 1.5 hours on a 4 GB GPU
 python examples/demo_c_splatting/demo_c.py --models afrt
+python examples/demo_c_splatting/demo_c.py --models refractive,afrt --footprint hybrid   # the footprint next to caustics
 python examples/demo_c_splatting/demo_c.py --models refractive_noisy,refractive_refined   # from a robot's poses
 python examples/demo_c_splatting/derivatives.py         # the Jacobian AFRT would need, and the images it misses
 python examples/demo_c_splatting/figures.py             # the figures below, and orbit.gif
@@ -50,6 +51,8 @@ never traces a ray.
   projection; it was checked against the analytic Jacobian to 1e-14.
 - New Gaussians from densification start from their parents' images.
 - Splats next to a caustic, where the Jacobian blows up, are left out and counted.
+- With `--footprint hybrid`, an image whose linear footprint is wider than 6 px gets the unscented footprint instead
+  (see "The streaks next to the caustics"). The results below are for that footprint.
 
 ## Results (`demo_c_out.txt`)
 
@@ -62,10 +65,13 @@ PSNR is given over the whole image, and over the pixels where the camera sees a 
 
 | Camera | Between the training views | ... near the wall | From new poses | ... near the wall | SSIM (between, new) | Opaque Gaussians to the true surface |
 |---|---:|---:|---:|---:|---:|---:|
-| **refractive (ours)** | **31.7 dB** | **24.7 dB** | **28.7 dB** | **22.5 dB** | 0.979, 0.959 | **0.99 mm** median (51 % within 1 mm) |
-| AFRT's images + our Jacobian | 31.7 dB | 24.3 dB | 28.8 dB | 22.4 dB | 0.979, 0.959 | 0.99 mm (51 %) |
+| **refractive (ours)** | **31.9 dB** | **24.6 dB** | **28.8 dB** | **22.5 dB** | 0.981, 0.962 | **0.99 mm** median (50 % within 1 mm) |
+| AFRT's images + our Jacobian | 31.8 dB | 24.3 dB | 28.9 dB | 22.4 dB | 0.981, 0.962 | 0.98 mm (51 %) |
 | pinhole | 23.3 dB | 17.5 dB | 21.4 dB | 15.9 dB | 0.899, 0.824 | 3.9 mm (18 %) |
 | pinhole + distortion | 24.0 dB | 15.8 dB | 22.2 dB | 14.5 dB | 0.904, 0.860 | 2.1 mm (18 %) |
+
+Ours and the AFRT model were trained with the hybrid footprint. Trained with the linear one they scored 31.7 / 24.7
+/ 28.7 / 22.5 dB (ours) and 31.7 / 24.3 / 28.8 / 22.4 dB (AFRT).
 
 ![metrics](metrics.png)
 
@@ -77,10 +83,10 @@ PSNR is given over the whole image, and over the pixels where the camera sees a 
   - Per-camera distortion, fitted through the tube to 2.8 px rms, helps a little overall.
   - It does worse next to the wall, where a polynomial cannot follow the tube.
 - **AFRT's images, given our Jacobian, tie with ours** within run-to-run variation (±0.5 dB per view, either way).
-  Ours is ahead next to the wall, where it draws the second images. Why the two are this close is the streaks' story
-  below.
+  Ours is ahead next to the wall between the views (24.6 against 24.3 dB), where it draws the second images. Why the
+  two are this close is the streaks' story below.
 
-**Training:** 4,000 steps, about 37 minutes for ours and 29 for a pinhole, on a GTX 1630 (4 GB). Ours ends with 29,008
+**Training:** 4,000 steps, about 37 minutes for ours and 29 for a pinhole, on a GTX 1630 (4 GB). Ours ends with 28,676
 Gaussians.
 
 ## Take the tube away
@@ -91,7 +97,7 @@ with no tube (`without_tube.json`, 3 test views):
 
 | Model, trained through the tube | Drawn without the tube |
 |---|---:|
-| **refractive (ours)** | **31.6 dB** |
+| **refractive (ours)** | **31.5 dB** |
 | pinhole + distortion | 21.8 dB |
 | pinhole | 19.1 dB |
 
@@ -103,8 +109,8 @@ wall, and the scene behind it.
 
 ## The images AFRT misses, and the derivative it lacks (`derivatives.py`)
 
-Measured on ours' trained Gaussians in the 12 test views, on the same GPU, with a batched PyTorch AFRT
-(`afrt_torch.py`, the library's AFRT to 2e-16):
+Measured on ours' Gaussians trained with the linear footprint, in the 12 test views, on the same GPU, with a batched
+PyTorch AFRT (`afrt_torch.py`, the library's AFRT to 2e-16):
 
 | | |
 |---|---|
@@ -129,9 +135,10 @@ They come from the footprint:
 The double images lie in the same band next to the caustic, so the two go together: 60–66 % of the footprints wider
 than 16 px belong to Gaussians a view shows twice, against 3 % of all images.
 
-Rendering ours' own trained Gaussians four ways (development campaign, T18) shows the trade:
+Rendering ours' own Gaussians, trained with the linear footprint, four ways (development campaign, T18) shows the
+trade:
 
-| ours' trained Gaussians, rendered with | between views | new poses | next to the wall (between / new) | streak pixels (between / new) |
+| ours' linear-trained Gaussians, rendered with | between views | new poses | next to the wall (between / new) | streak pixels (between / new) |
 |---|---:|---:|---:|---:|
 | every image, footprints capped at 48 px (as trained) | 31.74 | 28.69 | 24.66 / 22.46 | 24.47 / 20.15 |
 | footprints capped at 16 px | 31.83 | 28.75 | 24.64 / 22.49 | 24.91 / 20.47 |
@@ -143,7 +150,24 @@ Rendering ours' own trained Gaussians four ways (development campaign, T18) show
 - **The unscented footprint** projects six sigma points of the Gaussian on the image's own branch, so the points
   beyond the caustic have no image and the footprint stays on the side where the Gaussian is seen. It needs every
   image and each one's branch. Used only where the linear footprint is wider than 6 px, it removes the long streaks
-  at render time, without retraining. Training with it (`--footprint hybrid`) is the next step.
+  at render time, without retraining.
+
+**Training with it** (`--footprint hybrid`): ours and the AFRT model were retrained with the unscented footprint
+wherever the linear one is wider than 6 px. Each model is drawn with the footprint it was trained with, and all four
+are scored on the same streak pixels: those where the linear-trained model of ours draws footprints wider than 16 px
+(development campaign, T21).
+
+| Model, footprint | between views | new poses | next to the wall (between / new) | streak pixels (between / new) |
+|---|---:|---:|---:|---:|
+| ours, linear | 31.74 | 28.69 | 24.66 / 22.46 | 24.47 / 20.15 |
+| **ours, hybrid** | **31.90** | 28.83 | 24.59 / **22.53** | **25.19** / 20.99 |
+| AFRT's images + our Jacobian, linear | 31.66 | 28.80 | 24.34 / 22.40 | 24.45 / 20.49 |
+| AFRT's images + our Jacobian, hybrid | 31.82 | **28.92** | 24.31 / 22.45 | 25.10 / **21.18** |
+
+- **Training with the unscented footprint helps both models the same way:** 0.7–0.8 dB on the streak pixels and
+  0.1–0.2 dB over the whole image.
+- **Ours and the AFRT model still tie over the whole image.** Ours keeps its lead next to the wall between the views
+  (0.3 dB), where the second images are.
 
 ## Training from a robot's poses (`--models refractive_noisy,refractive_refined`)
 
@@ -155,7 +179,16 @@ A robot knows where its camera is only to a millimetre or two. Here the 48 train
   and its rotation turns the ray into a pixel. It equals `image_jacobians`' pose derivative to 1e-13. AFRT would need
   twelve more runs per Gaussian, per view, per step for it.
 
-(Results follow when the runs finish.)
+| Training poses | Between the training views (near the wall) | From new poses (near the wall) | SSIM (between, new) | Opaque Gaussians to the true surface |
+|---|---|---|---|---|
+| true (the refractive row above) | 31.7 (24.7) dB | 28.7 (22.5) dB | 0.979 / 0.959 | 0.99 mm |
+| a robot's, as they are | 24.9 (17.7) dB | 23.9 (17.3) dB | 0.905 / 0.873 | 1.53 mm |
+| **a robot's, refined with the Gaussians** | **30.1 (23.3) dB** | **27.8 (21.4) dB** | 0.971 / 0.949 | **1.07 mm** |
+
+- **Refining the poses wins back 5.2 of the 6.8 dB** that a robot's poses cost between the views, and 3.9 of the
+  4.8 dB from new poses. It brings the Gaussians to within 1.07 mm of the stones at the median.
+- **The poses themselves move from 1.80 mm and 0.29° to 1.44 mm and 0.21°** (rms). The test views are rendered from
+  their true poses, so the scores above measure the Gaussians where they truly are.
 
 ![test views](test_views.png)
 
