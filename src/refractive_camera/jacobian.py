@@ -106,13 +106,21 @@ def pixel_jacobian(camera, d_cam):
 def image_jacobians(points, camera, window, images):
     """How each image's pixel moves with its point and with the camera.
 
+    Every case is the implicit-function derivative of the projection's own equation, with closed-form partial
+    derivatives; the direction at the camera then turns into a pixel.
+    * cylinders, camera outside: (Phi, Z)(Lambda, C_z) = (azimuth, height) of the point, a 2 x 2 system;
+    * cylinders, camera inside: the same system for the ray reversed, from the point to the camera (light paths
+      are reversible);
+    * spheres, either side: Phi(Lambda) = the point's angle in the ray's plane; a motion out of that plane turns the
+      plane about the camera's or the point's radius;
+    * flat windows: f(Lambda) = sum_i H_i Lambda / sqrt(n_i^2 - Lambda^2) = the lateral offset.
+
     Parameters
     ----------
     points : (M, 3) array_like
         The world points given to `project`.
     camera : Camera
-    window : CylindricalWindow
-        Cylinders only, for now.
+    window : CylindricalWindow, SphericalWindow or FlatWindow
     images : Images
         ``project(points, camera, window)``.
 
@@ -124,14 +132,47 @@ def image_jacobians(points, camera, window, images):
         d(u, v)/d(omega, c): omega rotates the camera, ``R -> expm([omega]x) R`` (camera frame), and c is its centre
         in the world frame.
 
-    Rows on a caustic (det J = 0) are infinite there, and NaN for rays without a pixel.
+    Rows on a caustic (det J = 0) are infinite there, and NaN for rays without a pixel, for a sphere's ring, and for
+    the centre's derivative of a camera exactly on a cylinder's axis.
     """
-    if window.kind != "cylinder":
-        raise NotImplementedError("image_jacobians supports cylindrical windows for now")
+    from .projection import camera_side
     pts = np.asarray(points, float).reshape(-1, 3)
-    W = window.vectors_to_world(np.eye(3)).T                    # columns: the window's axes in the world frame
-    P = window.to_local(camera.center)
-    X = window.to_local(pts[images.point])
+    if window.kind == "flat":
+        dDX, dDP = _flat_direction_jacobians(window, camera.center, pts[images.point], images.lam)
+    else:
+        side = camera_side(window, camera.center)
+        P = window.to_local(camera.center)
+        X = window.to_local(pts[images.point])
+        Dl = window.vectors_to_local(images.direction)
+        if window.kind == "cylinder" and side == "outside":
+            dDX, dDP = _cylinder_outside(window, P, X, images)
+        elif window.kind == "cylinder":
+            dDX, dDP = _cylinder_inside(window, P, X, images, Dl)
+        elif window.kind == "sphere":
+            dDX, dDP = _sphere(window, P, X, images, Dl, side)
+        else:
+            raise TypeError(f"unsupported window {window!r}")
+        W = window.vectors_to_world(np.eye(3)).T                # columns: the window's axes in the world frame
+        dDX, dDP = _frame_to_world(dDX, W), _frame_to_world(dDP, W)
+    d_cam = images.direction @ camera.R.T
+    A = pixel_jacobian(camera, d_cam) @ camera.R                # d(uv)/d(direction, world)
+    d_omega = pixel_jacobian(camera, d_cam) @ -_skew(d_cam)
+    return A @ dDX, np.concatenate([d_omega, A @ dDP], -1)
+
+
+def _frame_to_world(dD, W):
+    """d(direction)/d(position) (K, 3, 3) from the window frame to the world's, W the window's axes as columns.  A
+    window-frame column that is unknown (NaN, as the off-axis motion of a camera on the axis) makes unknown only the
+    world columns it enters."""
+    unknown = np.isnan(dD).any(axis=1)                              # (K, 3): per row, the local columns unknown
+    world_unknown = (unknown.astype(float) @ (np.abs(W) > 1e-15).T.astype(float)) > 0
+    out = W @ np.nan_to_num(dD, nan=0.0, posinf=np.inf, neginf=-np.inf) @ W.T
+    out[np.broadcast_to(world_unknown[:, None, :], out.shape)] = np.nan
+    return out
+
+
+def _cylinder_outside(window, P, X, images):
+    """d(direction)/dX and d(direction)/d(camera centre), window frame, for a camera outside coaxial cylinders."""
     lam, cz = images.lam, images.c_z
     rP, phP = np.hypot(P[0], P[1]), np.arctan2(P[1], P[0])
     rX = np.hypot(X[:, 0], X[:, 1])
@@ -168,10 +209,176 @@ def image_jacobians(points, camera, window, images):
 
     dDl_dXl = dD_dLC @ (-Jinv @ GX)                              # (K, 3, 3)
     dDl_dPl = dD_dLC @ (-Jinv @ GP) + dD_drp[:, :, None] * drP + dD_dphp[:, :, None] * dphP
+    return dDl_dXl, dDl_dPl
 
-    d_cam = images.direction @ camera.R.T
-    A = pixel_jacobian(camera, d_cam) @ camera.R @ W             # d(uv)/d(D local)
-    d_point = A @ dDl_dXl @ W.T
-    d_c = A @ dDl_dPl @ W.T
-    d_omega = pixel_jacobian(camera, d_cam) @ -_skew(d_cam)
-    return d_point, np.concatenate([d_omega, d_c], -1)
+
+def _direction_at_inside_camera(lam, cz, n_c, rP, phP, s):
+    """The direction at a camera inside coaxial cylinders, D = d_r rhat + d_phi phat + d_z zhat (window frame), from
+    its momenta, s = +1 for a ray leaving outward (near branch), -1 inward (far), and its partial derivatives in
+    Lambda, C_z, r_P and phi_P."""
+    w = np.sqrt(np.maximum((n_c * n_c - cz * cz) * rP * rP - lam * lam, 0.0))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        q = 1.0 / w
+    d_r, d_ph = s * w / (n_c * rP), lam / (n_c * rP)
+    rh = np.array([np.cos(phP), np.sin(phP), 0.0])
+    ph = np.array([-np.sin(phP), np.cos(phP), 0.0])
+    zh = np.array([0.0, 0.0, 1.0])
+    dD_dlam = (-s * lam * q / (n_c * rP))[:, None] * rh + (1.0 / (n_c * rP)) * ph
+    dD_dc = (-s * cz * rP * q / n_c)[:, None] * rh + zh / n_c
+    dD_drp = (s * lam * lam * q / (n_c * rP ** 2))[:, None] * rh + (-lam / (n_c * rP ** 2))[:, None] * ph
+    dD_dphp = d_r[:, None] * ph - d_ph[:, None] * rh
+    return dD_dlam, dD_dc, dD_drp, dD_dphp
+
+
+def _cylinder_inside(window, P, X, images, Dl):
+    """d(direction)/dX and d(direction)/d(camera centre), window frame, for a camera inside coaxial cylinders.
+
+    The ray reversed runs from the point (the pinhole of the exchanged problem) to the camera, with momenta
+    (-Lambda, -C_z) and the same branch, and solves G' = (Phi' - phi_P + phi_X, Z' - z_P + z_X) = 0 with the outside
+    closed forms; the camera's momenta are minus the exchanged ones."""
+    n, R = list(window.indices), list(window.radii)
+    lam, cz = images.lam, images.c_z
+    far = images.branch == "far"
+    rP, phP = np.hypot(P[0], P[1]), np.arctan2(P[1], P[0])
+    rX = np.hypot(X[:, 0], X[:, 1])
+    if rP <= 1e-12 * R[-1]:
+        return _cylinder_on_axis(window, P, X, images, Dl)
+    t = cylinder_terms(-lam, -cz, n, R, rX, rP, far)               # exchanged: pinhole radius r_X, point radius r_P
+    J = np.stack([np.stack([t["phi_lam"], t["phi_c"]], -1), np.stack([t["z_lam"], t["z_c"]], -1)], -2)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        Jinv = np.linalg.inv(J)
+        zero = np.zeros_like(rX)
+        drX = np.stack([X[:, 0] / rX, X[:, 1] / rX, zero], -1)
+        dphX = np.stack([-X[:, 1] / rX ** 2, X[:, 0] / rX ** 2, zero], -1)
+        drP = np.array([P[0] / rP, P[1] / rP, 0.0])
+        dphP = np.array([-P[1] / rP ** 2, P[0] / rP ** 2, 0.0])
+    dzX = np.broadcast_to([0.0, 0.0, 1.0], X.shape)
+    dzP = np.array([0.0, 0.0, 1.0])
+    GX = np.stack([t["phi_rp"][:, None] * drX + dphX, t["z_rp"][:, None] * drX + dzX], -2)   # X: exchanged pinhole
+    GP = np.stack([t["phi_rx"][:, None] * drP - dphP, t["z_rx"][:, None] * drP - dzP], -2)   # P: exchanged point
+    dLC_dX, dLC_dP = Jinv @ GX, Jinv @ GP                          # d(Lambda, C_z) = -d(exchanged) = +Jinv dG'
+    rh = np.array([np.cos(phP), np.sin(phP), 0.0])
+    s = np.sign(Dl @ rh)
+    dD_dlam, dD_dc, dD_drp, dD_dphp = _direction_at_inside_camera(lam, cz, window.indices[-1], rP, phP, s)
+    dD_dLC = np.stack([dD_dlam, dD_dc], -1)
+    return dD_dLC @ dLC_dX, dD_dLC @ dLC_dP + dD_drp[:, :, None] * drP + dD_dphp[:, :, None] * dphP
+
+
+def _cylinder_on_axis(window, P, X, images, Dl):
+    """A camera on the cylinders' axis: Lambda = 0, and each ray stays in the plane through the axis and its point,
+    where the interfaces are parallel lines: a flat stack.  In that plane f(C) = sum_k H_k C / sqrt(n_k^2 - C^2) =
+    |z_X - z_P|, with H_k the media's radial thicknesses from the axis out; a motion of the point out of the plane
+    turns the plane about the axis.  Of the centre's derivative only the axial
+    part exists in closed form here; the others are NaN."""
+    n = np.array(window.indices[::-1])                              # from the camera's medium outward
+    R = np.array(window.radii[::-1])                                # innermost first
+    rX = np.hypot(X[:, 0], X[:, 1])
+    zero = np.zeros_like(rX)
+    rh = np.stack([X[:, 0] / rX, X[:, 1] / rX, zero], -1)
+    ph = np.stack([-X[:, 1] / rX, X[:, 0] / rX, zero], -1)
+    zh = np.array([0.0, 0.0, 1.0])
+    H = np.empty((len(X), len(n)))
+    H[:, 0] = R[0]
+    H[:, 1:-1] = np.diff(R)[None, :]
+    H[:, -1] = rX - R[-1]
+    dz = X[:, 2] - P[2]
+    e = np.where(dz[:, None] >= 0, zh, -zh)
+    C = np.abs(images.c_z)
+    root = np.sqrt(n[None, :] ** 2 - C[:, None] ** 2)
+    fp = np.sum(H * n[None, :] ** 2 / root ** 3, axis=1)
+    dC_dX = (e - (C / root[:, -1])[:, None] * rh) / fp[:, None]
+    g = (-(C / root[:, 0])[:, None] * rh + e) / n[0]                    # dD/dC in the plane
+    dDX = (g[:, :, None] * dC_dX[:, None, :]
+           + (np.einsum("ij,ij->i", Dl, rh) / rX)[:, None, None] * (ph[:, :, None] * ph[:, None, :]))
+    dDP = np.full_like(dDX, np.nan)
+    dDP[:, :, 2] = g * (-e[:, 2] / fp)[:, None]                        # the axial motion only
+    return dDX, dDP
+
+
+def _sphere(window, P, X, images, Dl, side):
+    """d(direction)/dX and d(direction)/d(camera centre), window frame, for concentric spheres, either side.
+
+    The ray stays in the plane of the centre, the camera and the point.  With e1 the camera's radial direction, e2
+    the ray's tangential direction at the camera and m = e1 x e2 the plane's normal, the ray leaves the camera at
+    D = d_r e1 + d_t e2, d_t = Lambda / (n_c r_P), and solves Phi(Lambda; r_P, r_X) = Phi_X, the point's angle from e1
+    in the ray's sense.  A motion of the point out of the plane turns the plane about e1; a motion of the camera out
+    of it turns the plane about the point's radius.  Phi is the cylinder's sweep at C_z = 0, for a camera inside on
+    the ray reversed (light paths are reversible)."""
+    n, R = list(window.indices), list(window.radii)
+    far = images.branch == "far"
+    rP = np.linalg.norm(P)
+    rX = np.linalg.norm(X, axis=1)
+    Xh = X / rX[:, None]
+    if rP <= 1e-12 * R[-1]:                                           # a centred camera: every ray radial, undeviated
+        dDX = (np.eye(3)[None] - Xh[:, :, None] * Xh[:, None, :]) / rX[:, None, None]
+        return dDX, np.full_like(dDX, np.nan)
+    e1 = P / rP
+    d_r = Dl @ e1
+    Dt = Dl - d_r[:, None] * e1
+    d_t = np.linalg.norm(Dt, axis=1)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        e2 = Dt / d_t[:, None]
+    m = np.cross(e1, e2)
+    cF, sF = Xh @ e1, np.einsum("ij,ij->i", Xh, e2)
+    n_c = n[0] if side == "outside" else n[-1]
+    lam = n_c * rP * d_t
+    zero = np.zeros_like(lam)
+    if side == "outside":
+        t = cylinder_terms(lam, zero, n, R, rP, rX, far)
+        F_lam, F_rP, F_rX = t["phi_lam"], t["phi_rp"], t["phi_rx"]
+    else:
+        t = cylinder_terms(lam, zero, n, R, rX, rP, far)            # the ray reversed: pinhole r_X, point r_P
+        F_lam, F_rP, F_rX = t["phi_lam"], t["phi_rx"], t["phi_rp"]
+    s = np.sign(d_r)
+    w = np.sqrt(np.maximum(n_c * n_c * rP * rP - lam * lam, 0.0))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        dDr_dlam, dDt_dlam = -s * lam / (w * n_c * rP), np.full_like(lam, 1.0 / (n_c * rP))
+        dDr_drp, dDt_drp = s * lam * lam / (w * n_c * rP ** 2), -lam / (n_c * rP ** 2)
+        e_perpX = -sF[:, None] * e1 + cF[:, None] * e2                 # d(Xh)/d(Phi_X), in the plane
+        dlam_dX = (e_perpX / rX[:, None] - F_rX[:, None] * Xh) / F_lam[:, None]
+        dlam_dP = (-e2 / rP - F_rP[:, None] * e1) / F_lam[:, None]
+        dD_dlam = dDr_dlam[:, None] * e1 + dDt_dlam[:, None] * e2
+        dD_drp = dDr_drp[:, None] * e1 + dDt_drp[:, None] * e2
+        mm = m[:, :, None] * m[:, None, :]
+        dDX = dD_dlam[:, :, None] * dlam_dX[:, None, :] + (d_t / (rX * sF))[:, None, None] * mm
+        dDP = (dD_dlam[:, :, None] * dlam_dP[:, None, :] + dD_drp[:, :, None] * e1[None, None, :]
+               + (d_r[:, None] * e2 - d_t[:, None] * e1)[:, :, None] * (e2 / rP)[:, None, :]
+               + ((d_r - d_t * cF / sF) / rP)[:, None, None] * mm)
+    return dDX, dDP
+
+
+def _flat_direction_jacobians(window, centre, X, lam):
+    """d(direction)/dX and d(direction)/d(camera centre), world frame, for a flat window.
+
+    f(Lambda) = sum_i H_i Lambda / sqrt(n_i^2 - Lambda^2) = L_tot, with H_1 the camera's distance to the first
+    interface, H_N the point's beyond the last, and L_tot the lateral offset |w|, w the part of X - c along the
+    planes; the direction is D = (sqrt(n_1^2 - Lambda^2) nhat + Lambda e) / n_1 with e = w / |w|."""
+    nrm = window.normal
+    n = np.array(window.indices)
+    off = np.array(window.offsets)
+    K = len(X)
+    H = np.empty((K, len(n)))
+    H[:, 0] = off[0] - window.height(centre)
+    H[:, 1:-1] = np.diff(off)[None, :]
+    H[:, -1] = window.height(X) - off[-1]
+    w = X - centre
+    w = w - np.outer(w @ nrm, nrm)
+    L = np.linalg.norm(w, axis=1)
+    # e along the lateral offset; for a point straight ahead any lateral direction gives the same derivative
+    other = np.eye(3)[int(np.argmin(np.abs(nrm)))]
+    e0 = other - (other @ nrm) * nrm
+    e0 /= np.linalg.norm(e0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        e = np.where(L[:, None] > 0, w / L[:, None], e0)
+    root = np.sqrt(n[None, :] ** 2 - lam[:, None] ** 2)
+    fp = np.sum(H * n[None, :] ** 2 / root ** 3, axis=1)                  # df/dLambda
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = np.where(L > 0, lam / L, 1.0 / fp)                     # Lambda / L_tot, and its limit at L_tot = 0
+    dlam_dX = (e - (lam / root[:, -1])[:, None] * nrm) / fp[:, None]
+    dlam_dP = (-e + (lam / root[:, 0])[:, None] * nrm) / fp[:, None]
+    n1, c = n[0], root[:, 0]
+    g = (-(lam / c)[:, None] * nrm + e) / n1                           # dD/dLambda
+    Pp = np.eye(3)[None] - e[:, :, None] * e[:, None, :] - np.outer(nrm, nrm)[None]
+    dDX = g[:, :, None] * dlam_dX[:, None, :] + (ratio / n1)[:, None, None] * Pp
+    dDP = g[:, :, None] * dlam_dP[:, None, :] - (ratio / n1)[:, None, None] * Pp
+    return dDX, dDP

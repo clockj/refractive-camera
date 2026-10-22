@@ -2,7 +2,9 @@
 
 Camera models that see through curved windows. For a 3-D point behind a cylindrical or spherical window (a
 water-filled tube, a pipe, a spherical tank), `project()` finds **every** pixel where the point appears: none when
-the wall hides it, one, or several. Flat windows (tank walls, flat ports) are covered too.
+the wall hides it, one, or several. The camera can look in from outside, or out from inside: from a cylindrical
+housing, from behind a dome port, or from inside a tank. Flat windows (tank walls, flat ports) are covered too, and
+every model comes with its analytic derivative.
 
 ![A robot arm catches a ball in a water tank; it sees the ball only through the tank's curved wall](examples/demo_d_arm/catch.gif)
 
@@ -39,6 +41,7 @@ pip install .            # from a checkout; builds the compiled core if a C++17 
   - Demo B: `.[sfm]`, which adds OpenCV and pycolmap.
   - Demo C: `.[splat]`, which adds PyTorch.
   - Demo D: `.[robot]`, which adds MuJoCo and imageio.
+  - Demo E: `.[housing]`, which adds OpenCV.
   - The tests: `.[test]`.
 
 ## Quick start
@@ -61,8 +64,22 @@ print(images.uv)                # one pixel per image; images.point says whose
 
 Run `python examples/quickstart.py` for the full example.
 
+**From inside.** A window lists its media from the outermost inward, whichever side the camera is on, so a camera
+in air behind a dome port under water is
+
+```python
+dome = rc.SphericalWindow(radii=(0.100, 0.094), indices=(1.33, 1.49, 1.0))      # water, acrylic, air
+cam = rc.Camera.look_at(position=(0.0, 0.0, -0.020), target=(0.0, 0.0, 1.0), up=(0.0, -1.0, 0.0),
+                        f=600.0, size=(1280, 1024))                           # 20 mm behind the dome's centre
+images = rc.project([[0.30, 0.10, 0.80]], cam, dome)  # 1 image, 11 px from where a pinhole camera puts it
+```
+
+`python examples/quickstart_inside.py` adds a camera in a water-filled tube looking out. That camera sees some
+points twice and others not at all, and half of its pixels see only the wall's reflection.
+
 `project()` handles any number of coaxial cylinders, concentric spheres or parallel planes
-(`CylindricalWindow`, `SphericalWindow`, `FlatWindow`), in any position and orientation. Each result row carries:
+(`CylindricalWindow`, `SphericalWindow`, `FlatWindow`), in any position and orientation, with the camera outside a
+curved window or inside it. Each result row carries:
 - the pixel and whether it falls on the sensor;
 - the branch: the ray meets the point before or after its closest approach to the axis;
 - the ray's conserved momenta;
@@ -72,16 +89,17 @@ Also in the package:
 
 | | |
 |---|---|
-| `trace()`, `back_project()` | Vector-Snell ray tracing through the window: from pixels to the line each one sees inside |
+| `trace()`, `back_project()` | Vector-Snell ray tracing through the window, from outside or inside: from pixels to the line each one sees across the window |
 | `triangulate()` | A point from pixels in two or more cameras: back-projected lines, then reprojection refinement |
-| `image_jacobians()` | How each image's pixel moves with its point and with the camera's pose (cylinders): analytic, for bundle adjustment and differentiable rendering |
+| `image_jacobians()` | How each image's pixel moves with its point and with the camera's pose, for every window and either side: analytic, for bundle adjustment and differentiable rendering |
 | `scene.render_scene()` | A ray-traced renderer of textured objects behind (and in front of) the window, with the true hit point of every pixel |
 | `render_dots()` | A small ray-traced renderer of dots behind the window, for synthetic data |
 | `tracing.search_images()` | A brute-force image search by tracing alone, used to validate `project()` |
 | `baselines.afrt()` | A published iterative method (AFRT, Belden 2013), for comparison |
 | `isaac` | Conversions between Isaac Sim / USD cameras and `Camera` (no Isaac Sim import) |
 
-Conventions (OpenCV cameras, media numbered from the camera inward) are in [docs/conventions.md](docs/conventions.md).
+Conventions (OpenCV cameras; a curved window's media listed from the outermost inward, whichever side the camera is
+on) are in [docs/conventions.md](docs/conventions.md).
 
 ## Where does a point appear?
 
@@ -116,7 +134,7 @@ everything:
 
 ## Demos
 
-Four demos, each with its README, its script and its numbers. Every image they use is ray-traced through the window
+Five demos, each with its README, its script and its numbers. Every image they use is ray-traced through the window
 by the package's own renderer (`refractive_camera.scene`), which uses none of the projection's equations, so no
 comparison is circular. Each demo keeps its renders and models in a `_cache/` folder beside it; set `REFCAM_CACHE` to
 keep them elsewhere.
@@ -127,6 +145,7 @@ keep them elsewhere.
 | [B. Structure from motion](examples/demo_b_sfm/README.md) | a robot-held camera circles the tube; 60 views give its poses and the stones inside | 0.24 mm (median 3-D error), from robot priors of 2 mm | pinhole + distortion: 36 mm; COLMAP: 2 of 60 views registered (60 of 60 without the tube) |
 | [C. Gaussian splatting](examples/demo_c_splatting/README.md) | 3-D Gaussian splatting of the stones, each Gaussian drawn at every image; the same Gaussians drawn with the tube taken away | 31.7 dB test PSNR (28.7 dB from new poses); Gaussians 1.0 mm from the true surface; 31.6 dB without the tube | AFRT's images + our Jacobian: 31.7 dB (28.8 dB), 1.0 mm; pinhole + distortion: 24.0 dB (22.2 dB), 2.1 mm, 21.8 dB without the tube; pinhole: 23.3 dB (21.4 dB), 3.9 mm, 19.1 dB |
 | [D. A robot arm catches a ball](examples/demo_d_arm/README.md) | a Franka with a slim gripper reaches into a water tank; it sees the ball only through the wall | 40 of 40 caught; 20 of 20 next to the wall | pinhole + AFRT: 40 of 40, 20 of 20; pinhole + distortion: 28 of 40, 8 of 20 |
+| [E. A camera in an underwater housing](examples/demo_e_housing/README.md) | one camera behind a flat port, behind a dome port and inside a tube, calibrated in the water; a robot docks with it | under 0.0001 px off when calibrated on exact pixels; docking through the tube: the dock 0.9 mm off at 1–3 m, 0.5 mm in the final metre | pinhole + distortion calibrated in the water (on exact pixels): up to 77 px off through the tube, 40 px through the flat port, 0.45 px through the dome; docking through the tube: 11 mm off |
 
 **What the comparisons show:**
 - **A pinhole camera cannot stand in for a curved window,** even calibrated through it. Its errors are millimetres to
@@ -144,6 +163,10 @@ keep them elsewhere.
 
   In Demos B and C the AFRT variants were given our Jacobian, so their scores there isolate which images each method
   finds.
+- **A camera inside its housing** (E): a pinhole + distortion calibrated in the water is nearly exact behind a dome
+  port (0.45 px), wrong close up behind a flat port (40 px at 0.15 m), and wrong at every range inside a tube (4–10
+  px at 1–4 m, 50 px at 0.15 m). Ours, which calibrates the camera's place in its housing with the analytic
+  derivatives, is exact in all three.
 
 ![Demo B: structure from motion around the tube](examples/demo_b_sfm/summary.png)
 
@@ -198,12 +221,17 @@ The checks are listed in [docs/validation.md](docs/validation.md):
 Supported now:
 - A camera **outside** coaxial cylindrical or concentric spherical interfaces, looking at points inside the
   innermost one: tubes, pipes, tanks, flasks.
+- A camera **inside** them, looking at points outside the outermost one: a camera in a cylindrical housing or behind
+  a dome port, or a camera submerged in a tube or a tank.
+  - In its least dense medium (air) the camera sees every point exactly once.
+  - In a denser one (water) it can see a point twice, or not at all.
 - A camera on one side of parallel planar interfaces, looking at points on the other: tank walls, flat ports. A flat
   window gives every point exactly one image.
 - Any number of interfaces and any positive refractive indices.
+- Analytic derivatives of every image with respect to its point and to the camera's pose, for all of these.
 
 Not yet:
-- A camera *inside* a dome or cylindrical port, looking out.
+- A camera between two interfaces (in a wall).
 - Non-concentric or deforming interfaces.
 - Brightness: the model gives where an image is, not how bright it is.
 

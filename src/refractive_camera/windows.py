@@ -1,12 +1,17 @@
 """Refractive windows: coaxial cylindrical and concentric spherical interfaces.
 
-The media are numbered from the camera inward, as in the paper: medium 1 holds the camera and medium N the points.
-`radii` lists the N - 1 interfaces from the outermost in, strictly decreasing; `indices` lists the N refractive
-indices from the camera's medium in.  A water-filled acrylic tube seen from air is
+A window describes the stack of media as it is, whichever side the camera is on: `radii` lists the N - 1 interfaces
+from the outermost in, strictly decreasing, and `indices` the N refractive indices from the outermost medium in.  A
+water-filled acrylic tube in air is
 
     CylindricalWindow(radii=(0.100, 0.094), indices=(1.0, 1.49, 1.33))
 
-The model needs the camera outside the outermost interface and the point strictly inside the innermost one.
+and the same object serves a camera outside it, looking at points in the water, and a camera in the water, looking
+out.  A camera in an air-filled housing or behind a dome port under water is ``indices=(1.33, 1.49, 1.0)``.
+
+The camera must be strictly outside the outermost interface or strictly inside the innermost one, and `project()`
+images the points strictly across the window from it.  For a camera outside, the media are numbered from the camera
+inward as in the paper: medium 1 holds the camera and medium N the points.
 """
 import numpy as np
 
@@ -31,23 +36,25 @@ class _Window:
         self.indices = tuple(float(n) for n in indices)
 
     def outside(self, points):
-        """Whether points (..., 3) lie strictly outside the outermost interface, where the camera must be."""
+        """Whether points (..., 3) lie strictly outside the outermost interface: where a camera looking in must be,
+        and where the points of a camera inside are imaged."""
         return self.radial_distance(points) > self.radii[0]
 
     def inside(self, points):
-        """Whether points (..., 3) lie strictly inside the innermost interface, where the model projects them."""
+        """Whether points (..., 3) lie strictly inside the innermost interface: where the points of a camera outside
+        are imaged, and where a camera looking out must be."""
         return self.radial_distance(points) < self.radii[-1]
 
 
 class CylindricalWindow(_Window):
-    """Coaxial cylindrical interfaces: a tube, a pipe, a rod.
+    """Coaxial cylindrical interfaces: a tube, a pipe, a rod, a cylindrical camera housing.
 
     Parameters
     ----------
     radii : sequence of float
         Interface radii, outermost first, strictly decreasing.
     indices : sequence of float
-        Refractive indices from the camera's medium inward; one more than `radii`.
+        Refractive indices from the outermost medium inward; one more than `radii`.
     axis_point, axis_direction : array_like
         A point on the common axis and its direction (any length).
     """
@@ -92,14 +99,14 @@ class CylindricalWindow(_Window):
 
 
 class SphericalWindow(_Window):
-    """Concentric spherical interfaces: a spherical tank or flask, seen from outside.
+    """Concentric spherical interfaces: a spherical tank or flask seen from outside, a dome port seen from inside.
 
     Parameters
     ----------
     radii : sequence of float
         Interface radii, outermost first, strictly decreasing.
     indices : sequence of float
-        Refractive indices from the camera's medium inward; one more than `radii`.
+        Refractive indices from the outermost medium inward; one more than `radii`.
     center : array_like
         The common centre.
     """

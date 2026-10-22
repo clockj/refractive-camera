@@ -1,9 +1,9 @@
 """Textured scenes seen through a window, rendered by tracing: synthetic images with exact ground truth.
 
 Each pixel's rays are traced from the camera through the window by vector Snell's law (`trace`), and their straight
-path in the innermost medium is intersected with the objects placed there.  Objects may also stand in the camera's own
-medium, outside the window; a ray meets those before it reaches the window or, when it misses the window, anywhere
-along its straight path.  The renderer uses none of the projection's closed forms, so its images can test them.
+path in the medium across the window is intersected with the objects placed there: the innermost medium for a camera
+outside, the outermost for a camera inside a curved window.  Objects may also stand in the camera's own medium; a ray
+meets those before it reaches the window or, when it misses the window, anywhere along its straight path.  The renderer uses none of the projection's closed forms, so its images can test them.
 
 Shading is view-independent: a solid texture (the colour at a point of the object, in the object's own frame) times
 an ambient term plus Lambertian light from fixed directions.  It is meant for geometry: feature detectors, matching,
@@ -224,7 +224,7 @@ class Hits:
     path : (L,)
         Geometric length of the ray from the camera to the hit (inf for none).
     inner : (L,) bool
-        The ray reached the window's innermost medium.
+        The ray reached the medium across the window (the innermost for a camera outside).
     """
     obj: np.ndarray
     point: np.ndarray
@@ -249,7 +249,8 @@ def _nearest(objects, o, d, tmin, tmax, ids):
 def cast(camera, window, uv, inside=(), outside=()):
     """Trace the rays through pixels (L, 2) and find the objects they meet first.
 
-    `inside` objects stand in the window's innermost medium, `outside` ones in the camera's medium.
+    `inside` objects stand across the window from the camera (in the innermost medium for a camera outside, the
+    outermost for a camera inside a curved window), `outside` ones in the camera's medium.
     """
     inside, outside = list(inside), list(outside)
     origins, dirs = camera.rays(np.atleast_2d(np.asarray(uv, float)))
@@ -261,7 +262,7 @@ def cast(camera, window, uv, inside=(), outside=()):
     ids_out = range(len(inside), len(inside) + len(outside))
     t_o, n_o, k_o = _nearest(outside, origins, dirs, 0.0, reach, ids_out)
     obj, point, normal, path = k_o, origins + np.where(np.isfinite(t_o), t_o, np.nan)[:, None] * dirs, n_o, t_o
-    # inside objects, along the ray's straight path in the innermost medium
+    # inside objects, along the ray's straight path across the window
     go = np.flatnonzero(tr.ok & ~np.isfinite(t_o))
     if go.size and inside:
         e, dd = tr.entry[go], tr.direction[go]
@@ -302,7 +303,8 @@ def render_scene(camera, window, inside=(), outside=(), *, supersample=2, region
     camera : Camera
     window : CylindricalWindow, SphericalWindow or FlatWindow
     inside, outside : sequences of objects (Sphere, Box, Cylinder, Disk)
-        In the window's innermost medium, and in the camera's medium.
+        Across the window from the camera (the innermost medium for a camera outside, the outermost for a camera
+        inside), and in the camera's medium.
     supersample : int
         Rays per pixel along each axis, for the colour.
     region : (u0, v0, u1, v1), optional

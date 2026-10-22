@@ -28,6 +28,7 @@ demo = ["matplotlib>=3.6", "scipy>=1.9", "pillow>=9"]
 sfm = ["refractive-camera[demo]", "opencv-python>=4.5", "pycolmap>=3.10"]
 splat = ["refractive-camera[demo]", "torch>=2.0"]
 robot = ["refractive-camera[demo]", "mujoco>=3.1", "imageio>=2.30", "imageio-ffmpeg>=0.4"]
+housing = ["refractive-camera[demo]", "opencv-python>=4.5"]
 test = ["pytest>=7"]
 
 [project.urls]

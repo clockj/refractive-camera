@@ -1,0 +1,95 @@
+
+== flat port: a 10 mm acrylic flat port, 20 mm in front of the lens (the pupil 1.5 mm further back)
+  calibration on 30 views (1890 dots), exact pixels:
+    pinhole + distortion: rms 0.066 px; f 1081.7, distortion [0.3774, 0.1834, 0.0057, 0.0021, 0.1924]
+    refractive: rms 0.000 px in 60 iterations; f 812.00 / 812.00 (true 812), principal point (644.00, 476.50) (true 644, 476.5); the camera 0.00 mm from its true place
+    where points appear: pixel error against the traced truth, median / 95th percentile / max
+      0.15 m (226 points): pinhole + distortion   6.60 /  23.63 /  40.41 px;  refractive  0.00 /  0.00 /  0.00 px
+      0.25 m (221 points): pinhole + distortion   3.76 /  13.81 /  23.07 px;  refractive  0.00 /  0.00 /  0.00 px
+      0.40 m (220 points): pinhole + distortion   1.96 /   7.22 /  11.38 px;  refractive  0.00 /  0.00 /  0.00 px
+      0.60 m (218 points): pinhole + distortion   0.91 /   2.86 /   6.33 px;  refractive  0.00 /  0.00 /  0.00 px
+      1.00 m (216 points): pinhole + distortion   0.17 /   0.79 /   1.94 px;  refractive  0.00 /  0.00 /  0.00 px
+      1.50 m (213 points): pinhole + distortion   0.40 /   1.81 /   3.45 px;  refractive  0.00 /  0.00 /  0.00 px
+      2.50 m (212 points): pinhole + distortion   0.72 /   3.01 /   5.22 px;  refractive  0.00 /  0.00 /  0.00 px
+      4.00 m (211 points): pinhole + distortion   0.89 /   3.73 /   6.24 px;  refractive  0.00 /  0.00 /  0.00 px
+  calibration on 30 views (1890 dots), noise 0.2 px:
+    pinhole + distortion: rms 0.286 px; f 1082.0, distortion [0.379, 0.1789, 0.0057, 0.0021, 0.1944]
+    refractive: rms 0.197 px in 47 iterations; f 812.18 / 812.19 (true 812), principal point (644.01, 476.81) (true 644, 476.5); the camera 0.83 mm from its true place
+    where points appear: pixel error against the traced truth, median / 95th percentile / max
+      0.15 m (226 points): pinhole + distortion   5.21 /  21.26 /  32.82 px;  refractive  5.33 /  6.70 /  8.26 px
+      0.25 m (221 points): pinhole + distortion   2.84 /  12.87 /  20.85 px;  refractive  3.00 /  3.84 /  4.92 px
+      0.40 m (220 points): pinhole + distortion   1.50 /   6.34 /  12.49 px;  refractive  1.62 /  2.11 /  2.55 px
+      0.60 m (218 points): pinhole + distortion   0.63 /   2.90 /   7.22 px;  refractive  0.84 /  1.12 /  1.34 px
+      1.00 m (216 points): pinhole + distortion   0.16 /   1.02 /   2.31 px;  refractive  0.20 /  0.31 /  0.36 px
+      1.50 m (213 points): pinhole + distortion   0.39 /   1.70 /   3.26 px;  refractive  0.13 /  0.19 /  0.22 px
+      2.50 m (212 points): pinhole + distortion   0.66 /   2.63 /   4.63 px;  refractive  0.37 /  0.52 /  0.61 px
+      4.00 m (211 points): pinhole + distortion   0.80 /   3.29 /   5.42 px;  refractive  0.51 /  0.72 /  0.84 px
+  docking: the dock's position (mm) and orientation (deg) error in the robot's frame, median / max
+    1.00-3.00 m (31 frames), pinhole   :    0.68 /    5.10 mm,  0.388 /  1.684 deg
+    1.00-3.00 m (31 frames), refractive:    0.68 /    4.08 mm,  0.462 /  1.798 deg
+    0.35-1.00 m (29 frames), pinhole   :    0.64 /    2.11 mm,  0.303 /  0.499 deg
+    0.35-1.00 m (29 frames), refractive:    0.40 /    0.54 mm,  0.062 /  0.137 deg
+
+== dome port: a 100 mm acrylic dome (5 mm wall), the lens's pupil 6 mm in front of its centre and 1 mm aside
+  calibration on 30 views (1890 dots), exact pixels:
+    pinhole + distortion: rms 0.005 px; f 841.0, distortion [0.0178, -0.0035, -0.0012, 0.003, 0.0005]
+    refractive: rms 0.000 px in 60 iterations; f 812.00 / 812.00 (true 812), principal point (644.00, 476.50) (true 644, 476.5); the camera 0.00 mm from its true place
+    where points appear: pixel error against the traced truth, median / 95th percentile / max
+      0.15 m (456 points): pinhole + distortion   0.28 /   0.35 /   0.45 px;  refractive  0.00 /  0.00 /  0.00 px
+      0.25 m (450 points): pinhole + distortion   0.16 /   0.20 /   0.30 px;  refractive  0.00 /  0.00 /  0.00 px
+      0.40 m (432 points): pinhole + distortion   0.08 /   0.12 /   0.26 px;  refractive  0.00 /  0.00 /  0.00 px
+      0.60 m (420 points): pinhole + distortion   0.05 /   0.08 /   0.27 px;  refractive  0.00 /  0.00 /  0.00 px
+      1.00 m (414 points): pinhole + distortion   0.02 /   0.08 /   0.28 px;  refractive  0.00 /  0.00 /  0.00 px
+      1.50 m (414 points): pinhole + distortion   0.02 /   0.08 /   0.29 px;  refractive  0.00 /  0.00 /  0.00 px
+      2.50 m (414 points): pinhole + distortion   0.03 /   0.09 /   0.30 px;  refractive  0.00 /  0.00 /  0.00 px
+      4.00 m (414 points): pinhole + distortion   0.03 /   0.09 /   0.30 px;  refractive  0.00 /  0.00 /  0.00 px
+  calibration on 30 views (1890 dots), noise 0.2 px:
+    pinhole + distortion: rms 0.274 px; f 841.4, distortion [0.0176, -0.0039, -0.001, 0.0029, 0.0017]
+    refractive: rms 0.194 px in 60 iterations; f 812.68 / 812.63 (true 812), principal point (643.96, 476.16) (true 644, 476.5); the camera 0.53 mm from its true place
+    where points appear: pixel error against the traced truth, median / 95th percentile / max
+      0.15 m (456 points): pinhole + distortion   2.63 /   3.60 /   4.12 px;  refractive  2.39 /  3.52 /  4.33 px
+      0.25 m (450 points): pinhole + distortion   1.47 /   1.96 /   2.18 px;  refractive  1.33 /  1.92 /  2.27 px
+      0.40 m (432 points): pinhole + distortion   0.80 /   1.06 /   1.14 px;  refractive  0.73 /  1.03 /  1.21 px
+      0.60 m (420 points): pinhole + distortion   0.44 /   0.60 /   0.66 px;  refractive  0.40 /  0.59 /  0.70 px
+      1.00 m (414 points): pinhole + distortion   0.17 /   0.29 /   0.39 px;  refractive  0.16 /  0.30 /  0.40 px
+      1.50 m (414 points): pinhole + distortion   0.10 /   0.20 /   0.30 px;  refractive  0.11 /  0.22 /  0.28 px
+      2.50 m (414 points): pinhole + distortion   0.15 /   0.26 /   0.44 px;  refractive  0.15 /  0.30 /  0.39 px
+      4.00 m (414 points): pinhole + distortion   0.20 /   0.34 /   0.53 px;  refractive  0.19 /  0.38 /  0.48 px
+  docking: the dock's position (mm) and orientation (deg) error in the robot's frame, median / max
+    1.00-3.00 m (31 frames), pinhole   :    1.05 /    4.74 mm,  0.458 /  2.876 deg
+    1.00-3.00 m (31 frames), refractive:    1.01 /    4.87 mm,  0.436 /  2.849 deg
+    0.35-1.00 m (29 frames), pinhole   :    0.33 /    0.49 mm,  0.056 /  0.236 deg
+    0.35-1.00 m (29 frames), refractive:    0.31 /    0.52 mm,  0.052 /  0.230 deg
+
+== tube housing: a 100 mm acrylic tube (5 mm wall), vertical, the lens 15 mm in front of its axis (17 mm built)
+  calibration on 30 views (1890 dots), exact pixels:
+    pinhole + distortion: rms 0.967 px; f 901.3, distortion [0.2052, -0.3276, -0.0039, 0.0141, 0.3216]
+    refractive: rms 0.000 px in 60 iterations; f 812.00 / 812.00 (true 812), principal point (644.00, 476.50) (true 644, 476.5); the camera 0.00 mm from its true place
+    where points appear: pixel error against the traced truth, median / 95th percentile / max
+      0.15 m (331 points): pinhole + distortion  50.22 /  66.83 /  76.89 px;  refractive  0.00 /  0.00 /  0.00 px
+      0.25 m (286 points): pinhole + distortion  27.06 /  33.94 /  38.29 px;  refractive  0.00 /  0.00 /  0.00 px
+      0.40 m (284 points): pinhole + distortion  13.07 /  19.84 /  23.11 px;  refractive  0.00 /  0.00 /  0.00 px
+      0.60 m (281 points): pinhole + distortion   5.62 /  14.23 /  18.32 px;  refractive  0.00 /  0.00 /  0.00 px
+      1.00 m (280 points): pinhole + distortion   4.36 /  15.29 /  19.10 px;  refractive  0.00 /  0.00 /  0.00 px
+      1.50 m (279 points): pinhole + distortion   6.22 /  17.01 /  21.27 px;  refractive  0.00 /  0.00 /  0.00 px
+      2.50 m (277 points): pinhole + distortion   8.61 /  19.12 /  23.38 px;  refractive  0.00 /  0.00 /  0.00 px
+      4.00 m (277 points): pinhole + distortion   9.88 /  21.08 /  24.68 px;  refractive  0.00 /  0.00 /  0.00 px
+  calibration on 30 views (1890 dots), noise 0.2 px:
+    pinhole + distortion: rms 1.012 px; f 902.2, distortion [0.2003, -0.2922, -0.0042, 0.014, 0.2649]
+    refractive: rms 0.196 px in 60 iterations; f 812.01 / 812.20 (true 812), principal point (644.17, 475.98) (true 644, 476.5); the camera 0.90 mm from its true place
+    where points appear: pixel error against the traced truth, median / 95th percentile / max
+      0.15 m (331 points): pinhole + distortion  53.73 /  70.35 /  82.85 px;  refractive  6.24 /  7.35 /  8.09 px
+      0.25 m (286 points): pinhole + distortion  28.55 /  35.91 /  41.31 px;  refractive  3.41 /  4.10 /  4.51 px
+      0.40 m (284 points): pinhole + distortion  13.93 /  20.89 /  23.71 px;  refractive  1.83 /  2.24 /  2.51 px
+      0.60 m (281 points): pinhole + distortion   5.99 /  14.58 /  18.29 px;  refractive  0.93 /  1.24 /  1.45 px
+      1.00 m (280 points): pinhole + distortion   4.59 /  15.07 /  18.88 px;  refractive  0.22 /  0.47 /  0.67 px
+      1.50 m (279 points): pinhole + distortion   6.40 /  17.14 /  21.42 px;  refractive  0.25 /  0.34 /  0.47 px
+      2.50 m (277 points): pinhole + distortion   8.82 /  19.10 /  23.82 px;  refractive  0.49 /  0.63 /  0.70 px
+      4.00 m (277 points): pinhole + distortion  10.25 /  21.03 /  25.27 px;  refractive  0.65 /  0.82 /  0.90 px
+  docking: the dock's position (mm) and orientation (deg) error in the robot's frame, median / max
+    1.00-3.00 m (31 frames), pinhole   :   11.39 /   33.23 mm,  3.391 /  5.328 deg
+    1.00-3.00 m (31 frames), refractive:    0.88 /    4.81 mm,  0.433 /  2.111 deg
+    0.35-1.00 m (29 frames), pinhole   :    4.14 /    9.69 mm,  1.515 /  2.625 deg
+    0.35-1.00 m (29 frames), refractive:    0.48 /    0.66 mm,  0.052 /  0.171 deg
+
+Demo E done in 223 s
