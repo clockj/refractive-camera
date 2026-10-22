@@ -5,6 +5,7 @@ python examples/demo_c_splatting/demo_c.py              # ours, pinhole, pinhole
 python examples/demo_c_splatting/demo_c.py --models afrt
 python examples/demo_c_splatting/demo_c.py --models refractive,afrt --footprint hybrid   # the footprint next to caustics
 python examples/demo_c_splatting/demo_c.py --models refractive_noisy,refractive_refined   # from a robot's poses
+python examples/demo_c_splatting/demo_c.py --models afrt_pure   # AFRT alone, no formula of ours: about 4.6 hours
 python examples/demo_c_splatting/derivatives.py         # the Jacobian AFRT would need, and the images it misses
 python examples/demo_c_splatting/figures.py             # the figures below, and orbit.gif
 ```
@@ -169,6 +170,30 @@ are scored on the same streak pixels: those where the linear-trained model of ou
 - **Ours and the AFRT model still tie over the whole image.** Ours keeps its lead next to the wall between the views
   (0.3 dB), where the second images are.
 
+## Training with AFRT alone (`--models afrt_pure`)
+
+The AFRT model above is given our Jacobian and our Newton tracking. `splat.AFRTPureSplatCamera` uses neither: at
+every step each Gaussian's image comes from one AFRT start and its footprint from central differences of AFRT, so no
+formula of the refraction model enters. It was trained with the linear footprint, as was ours in this table:
+
+| Linear footprint | Between the training views (near the wall) | From new poses (near the wall) | SSIM (between, new) | Opaque Gaussians to the true surface | Training |
+|---|---|---|---|---|---:|
+| ours | 31.7 (24.7) dB | 28.7 (22.5) dB | 0.979 / 0.959 | 0.99 mm (51 % within 1 mm) | 37 min |
+| AFRT alone | 32.3 (24.2) dB | 29.3 (22.2) dB | 0.982 / 0.966 | 0.89 mm (58 %) | 4.6 h |
+
+- **It trains to the same quality as ours, at 7.4 times the time.**
+  - Over the whole image it is 0.6 dB ahead: in 11 of the 12 views between the training views, and in all 12 from
+    new poses. It ends with fewer Gaussians (22,480 against 29,008), and they lie closer to the stones.
+  - Next to the wall it is 0.3–0.4 dB behind, where ours draws the second images. Ours' own Gaussians, drawn with one
+    image each, lose 0.2–0.3 dB there too (the streaks' table above).
+- **Why it gains over the whole image was not traced.**
+  - It is also ahead of the AFRT model above in all 24 views, and that model draws the same images.
+  - The two differ in the footprint. AFRT alone takes its Jacobian from differences with a 10 µm step, and it draws
+    no Gaussian where one of its seven AFRT runs fails.
+  - Each model was trained once, so the spread between whole training runs is not known.
+- **The time is AFRT's:** 4.1 s per step on average, against 0.56 s for ours. A view takes 5.9 s for AFRT's pixels
+  and its finite differences, against 68 ms for ours' projection and Jacobian.
+
 ## Training from a robot's poses (`--models refractive_noisy,refractive_refined`)
 
 A robot knows where its camera is only to a millimetre or two. Here the 48 training poses are off by 1.8 mm and 0.29°
@@ -204,6 +229,8 @@ In the development campaign:
   projected by `project()`. The mean is within 0.02 px and the covariance within about 1 %.
 - **The batched AFRT** equals the library's AFRT: same convergence on 2,000 point-camera pairs, directions within
   2.2e-16.
+- **AFRT alone's camera** calls no formula of the refraction model. Where it has ours' image, its pixels agree with
+  ours within 3e-6 px, and its Jacobians within 8e-8 at the median.
 
 **Limits:**
 - the images are synthetic and view-independent (no reflections, no Fresnel);

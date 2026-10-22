@@ -128,3 +128,18 @@ ground truth rendered in 0 s
     afrt      it  3999  loss 0.0074  gaussians 28541  2312 s
   test PSNR 31.82 dB (water 30.53, near the wall 24.31), SSIM 0.981; opaque centres to the true surface: median 0.98 mm
   far views: PSNR 28.92 dB (water 27.25, near the wall 22.45), SSIM 0.962
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 4 s
+
+== afrt_pure
+    afrt_pure it     0  loss 0.1735  gaussians 10000  3 s
+    afrt_pure it   500  loss 0.0449  gaussians 6231  988 s
+    afrt_pure it  1000  loss 0.0133  gaussians 16206  2292 s
+    afrt_pure it  1500  loss 0.0084  gaussians 19389  4284 s
+    afrt_pure it  2000  loss 0.0135  gaussians 21239  6569 s
+    afrt_pure it  2500  loss 0.0098  gaussians 22480  9005 s
+    afrt_pure it  3000  loss 0.0091  gaussians 22480  11502 s
+    afrt_pure it  3500  loss 0.0060  gaussians 22480  14006 s
+    afrt_pure it  3999  loss 0.0070  gaussians 22480  16512 s
+  test PSNR 32.29 dB (water 30.97, near the wall 24.22), SSIM 0.982; opaque centres to the true surface: median 0.89 mm
+  far views: PSNR 29.28 dB (water 27.64, near the wall 22.21), SSIM 0.966

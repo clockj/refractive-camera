@@ -184,7 +184,7 @@ comparison is circular.
 |---|---|---|---|
 | [A. Locating a target](examples/demo_a_localization/README.md) | three cameras track a 1 mm dot in the tube | 0.001 mm rms near the axis, 0.09 mm near the wall | pinhole + distortion: 0.94 mm and 8.1 mm |
 | [B. Structure from motion](examples/demo_b_sfm/README.md) | a robot-held camera circles the tube; 60 views give its poses and the stones inside | 0.24 mm (median 3-D error), from robot priors of 2 mm | pinhole + distortion: 36 mm; COLMAP: 2 of 60 views registered (60 of 60 without the tube) |
-| [C. Gaussian splatting](examples/demo_c_splatting/README.md) | 3-D Gaussian splatting of the stones, each Gaussian drawn at every image; the same Gaussians drawn with the tube taken away; training from a robot's poses | 31.9 dB test PSNR (28.8 dB from new poses); Gaussians 1.0 mm from the true surface; 31.5 dB without the tube; 30.1 dB from a robot's poses, refined as it trains | AFRT's images + our Jacobian: 31.8 dB (28.9 dB), 1.0 mm; pinhole + distortion: 24.0 dB (22.2 dB), 2.1 mm, 21.8 dB without the tube; pinhole: 23.3 dB (21.4 dB), 3.9 mm, 19.1 dB |
+| [C. Gaussian splatting](examples/demo_c_splatting/README.md) | 3-D Gaussian splatting of the stones, each Gaussian drawn at every image; the same Gaussians drawn with the tube taken away; training from a robot's poses | 31.9 dB test PSNR (28.8 dB from new poses); Gaussians 1.0 mm from the true surface; 31.5 dB without the tube; 30.1 dB from a robot's poses, refined as it trains | AFRT's images + our Jacobian: 31.8 dB (28.9 dB), 1.0 mm; AFRT alone (no formula of ours): 32.3 dB (29.3 dB), 0.9 mm, training for 4.6 h against ours' 37 min; pinhole + distortion: 24.0 dB (22.2 dB), 2.1 mm, 21.8 dB without the tube; pinhole: 23.3 dB (21.4 dB), 3.9 mm, 19.1 dB |
 | [D. A robot arm catches a ball](examples/demo_d_arm/README.md) | a Franka with a slim gripper reaches into a water tank; it sees the ball only through the wall; then it puts a needle at the ball's centre | 40 of 40 caught, 20 of 20 next to the wall; the needle within 0.5 mm of the centre in 20 of 20 placements next to the wall (at most 0.05 mm off), 1.8 s per estimate | pinhole + AFRT: 40 of 40, 20 of 20; needle 5 of 20 (blob centroids), 20 of 20 with AFRT alone fitting the whole ball (at most 0.36 mm off) at 33 s per estimate; pinhole + distortion: 28 of 40, 8 of 20; needle 0 of 20 |
 | [E. A camera in an underwater housing](examples/demo_e_housing/README.md) | one camera behind a flat port, behind a dome port and inside a tube, calibrated in the water; a robot docks with it | under 0.0001 px off when calibrated on exact pixels; docking through the tube: the dock 0.9 mm off at 1–3 m, 0.5 mm in the final metre | pinhole + distortion calibrated in the water (on exact pixels): up to 77 px off through the tube, 40 px through the flat port, 0.45 px through the dome; docking through the tube: 11 mm off |
 
@@ -212,7 +212,9 @@ comparison is circular.
   differences), matches ours where one image per point is enough, at a multiple of the time:
   - bundle adjustment (B): the same accuracy, at about four times the time;
   - the needle task (D, part 4), fitted to the whole ball: like ours, it lands all 20 placements next to the wall
-    within 0.5 mm. Within 0.1 mm it lands 17, against ours' 20, and it takes 18 times the time per estimate.
+    within 0.5 mm. Within 0.1 mm it lands 17, against ours' 20, and it takes 18 times the time per estimate;
+  - splatting (C), with its own images and footprints: the same quality as ours with the same footprint (32.3
+    against 31.7 dB, but 0.4 dB behind next to the wall), at 7.4 times the training time.
 
   What it cannot do stays the same: the second image of a point, and telling a hidden point from a failed search.
 - **A camera inside its housing** (E): a pinhole + distortion calibrated in the water is nearly exact behind a dome
