@@ -1,0 +1,15 @@
+Placing a needle at the ball's centre: a trial succeeds when the tip ends within 0.5 mm of the true centre.
+
+  open water (40-120 mm), 20 placements
+    ours, whole ball        : 20 of 20 succeed; estimate's error median  0.016 mm, max   0.03 mm; tip to estimate 0.0010 mm max; 0.69 s per estimate
+    AFRT alone, whole ball  : 20 of 20 succeed; estimate's error median  0.025 mm, max   0.09 mm; tip to estimate 0.0010 mm max; 12.34 s per estimate
+    AFRT, blob centroids    : 20 of 20 succeed; estimate's error median  0.352 mm, max   0.47 mm; tip to estimate 0.0010 mm max; 0.00 s per estimate
+    pinhole + distortion    :  2 of 20 succeed; estimate's error median  1.094 mm, max   4.80 mm; tip to estimate 0.0009 mm max; 0.00 s per estimate
+
+  next to the wall (136-160 mm), 20 placements
+    ours, whole ball        : 19 of 20 succeed; estimate's error median  0.027 mm, max   0.52 mm; tip to estimate 0.0010 mm max; 0.94 s per estimate
+    AFRT alone, whole ball  : 18 of 20 succeed; estimate's error median  0.023 mm, max   1.53 mm; tip to estimate 0.0010 mm max; 13.08 s per estimate
+    AFRT, blob centroids    :  5 of 20 succeed; estimate's error median  1.031 mm, max   3.46 mm; tip to estimate 0.0010 mm max; 0.00 s per estimate
+    pinhole + distortion    :  0 of 20 succeed; estimate's error median 12.304 mm, max  17.87 mm; tip to estimate 0.0012 mm max; 0.00 s per estimate
+
+40 trials in 183 s

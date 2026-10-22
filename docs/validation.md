@@ -43,9 +43,10 @@ The suite runs in about 35 s with the compiled core, and about 4 min on pure Pyt
 - **The image Jacobians** (`image_jacobians`) give how each image's pixel moves with its point and with the camera,
   for every window and both sides of a curved one.
   - **SymPy:** every partial derivative in their chains was checked step by step: 54 steps for cylinders seen from
-    outside, and 38 for flat windows, spheres and cameras inside, all proved. Two statements SymPy cannot express
-    were checked numerically instead: that a camera inside sees along the reversed rays of the outside problem, and
-    that a sphere's sweep is a cylinder's at C_z = 0.
+    outside, all proved, and 52 for flat windows, spheres, cameras inside and the limit at the axis or centre: 47
+    proved, 2 checked on samples only (two inverse-trigonometric identities on a range of angles), 3 recorded as
+    not expressible in SymPy and checked numerically (a camera inside sees along the reversed rays of the outside
+    problem; a sphere's sweep is a cylinder's at C_z = 0; the expansions' remainders do not reach the derivative).
   - **Against `project()`, cylinders from outside:** compared with central differences of `project()` itself, the
     median relative error is 3e-10 and the largest 1e-6. That is over 457 images away from caustics, seen from four
     camera poses, on both branches.

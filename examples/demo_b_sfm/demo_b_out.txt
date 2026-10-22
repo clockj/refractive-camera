@@ -907,3 +907,260 @@ Demo B: 60 views of 1280 x 1024 px, f = 1500 px; pose priors 1.5 mm and 0.20 deg
   2.6705195053561823e-05
  ]
 }
+Demo B: 60 views of 1280 x 1024 px, f = 1500 px; pose priors 1.5 mm and 0.20 deg per axis
+features: 849 per view
+matching: 460 view pairs, 47352 mutual ratio-test matches, 38678 kept by the ray check
+tracks: 2558 with at least 3 views (249 dropped: two features in one view)
+ground truth: 1461 of 2558 tracks have keypoints on one surface point (within 0.5 mm)
+
+== afrt_pure
+  afrt_pure: 2558 points, 14778 observations; bundle adjustment
+    it  0  cost 1.588306e+05  lambda 3.3e-04  median residual 0.845 px  unpredicted 145
+    it  1  cost 1.511554e+05  lambda 1.1e-04  median residual 0.503 px  unpredicted 150
+    it  2  cost 1.494828e+05  lambda 3.7e-05  median residual 0.488 px  unpredicted 147
+    it  3  cost 1.470018e+05  lambda 1.2e-05  median residual 0.484 px  unpredicted 149
+    it  4  cost 1.460130e+05  lambda 4.1e-06  median residual 0.481 px  unpredicted 153
+    it  5  cost 1.451231e+05  lambda 1.4e-06  median residual 0.481 px  unpredicted 155
+    it  6  cost 1.447375e+05  lambda 4.6e-07  median residual 0.480 px  unpredicted 157
+    it  7  cost 1.446700e+05  lambda 4.0e-02  median residual 0.480 px  unpredicted 154
+    it  8  cost 1.445081e+05  lambda 1.3e-02  median residual 0.479 px  unpredicted 155
+    it  9  cost 1.443749e+05  lambda 4.4e-03  median residual 0.479 px  unpredicted 156
+    it 10  cost 1.443388e+05  lambda 5.9e-03  median residual 0.479 px  unpredicted 157
+    it 11  cost 1.443093e+05  lambda 1.3e-01  median residual 0.479 px  unpredicted 156
+    it 12  cost 1.442843e+05  lambda 4.2e-02  median residual 0.479 px  unpredicted 157
+    it 13  cost 1.442698e+05  lambda 2.2e-01  median residual 0.479 px  unpredicted 156
+    it 14  cost 1.442579e+05  lambda 7.5e-02  median residual 0.479 px  unpredicted 157
+    it 15  cost 1.442430e+05  lambda 4.0e-01  median residual 0.478 px  unpredicted 156
+    it 16  cost 1.442222e+05  lambda 5.3e-01  median residual 0.479 px  unpredicted 156
+    it 17  cost 1.442148e+05  lambda 7.1e-01  median residual 0.479 px  unpredicted 156
+    it 18  cost 1.442108e+05  lambda 9.5e-01  median residual 0.479 px  unpredicted 156
+    it 19  cost 1.442087e+05  lambda 1.3e+00  median residual 0.479 px  unpredicted 156
+    it 20  cost 1.442083e+05  lambda 6.7e+00  median residual 0.479 px  unpredicted 156
+    it 21  cost 1.442081e+05  lambda 9.0e+00  median residual 0.478 px  unpredicted 156
+    it 22  cost 1.442079e+05  lambda 1.2e+01  median residual 0.478 px  unpredicted 156
+    it 23  cost 1.442076e+05  lambda 4.0e+00  median residual 0.479 px  unpredicted 156
+    it 24  cost 1.442072e+05  lambda 5.3e+00  median residual 0.479 px  unpredicted 156
+    it 25  cost 1.442072e+05  lambda 7.4e+06  median residual 0.479 px  unpredicted 156
+  afrt_pure: kept 12886 of 14778 observations (residual < 3.00 px); refining
+    it  0  cost 3.785547e+03  lambda 3.3e-04  median residual 0.361 px  unpredicted 0
+    it  1  cost 3.772835e+03  lambda 1.1e-04  median residual 0.358 px  unpredicted 0
+    it  2  cost 3.771699e+03  lambda 3.7e-05  median residual 0.359 px  unpredicted 0
+    it  3  cost 3.771602e+03  lambda 1.2e-05  median residual 0.358 px  unpredicted 0
+    it  4  cost 3.771581e+03  lambda 4.1e-06  median residual 0.358 px  unpredicted 0
+    it  5  cost 3.771569e+03  lambda 1.4e-06  median residual 0.358 px  unpredicted 0
+    it  6  cost 3.771559e+03  lambda 4.6e-07  median residual 0.358 px  unpredicted 0
+    it  7  cost 3.771549e+03  lambda 1.5e-07  median residual 0.358 px  unpredicted 0
+    it  8  cost 3.771539e+03  lambda 5.1e-08  median residual 0.358 px  unpredicted 0
+    it  9  cost 3.771530e+03  lambda 1.7e-08  median residual 0.358 px  unpredicted 0
+    it 10  cost 3.771520e+03  lambda 5.6e-09  median residual 0.358 px  unpredicted 0
+    it 11  cost 3.771511e+03  lambda 1.9e-09  median residual 0.358 px  unpredicted 0
+    it 12  cost 3.771501e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 13  cost 3.771492e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 14  cost 3.771483e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 15  cost 3.771473e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 16  cost 3.771464e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 17  cost 3.771454e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 18  cost 3.771445e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 19  cost 3.771435e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 20  cost 3.771426e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 21  cost 3.771416e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 22  cost 3.771407e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 23  cost 3.771398e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 24  cost 3.771388e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 25  cost 3.771379e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 26  cost 3.771369e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 27  cost 3.771360e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 28  cost 3.771350e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+    it 29  cost 3.771341e+03  lambda 1.0e-09  median residual 0.358 px  unpredicted 0
+{
+ "points": 2221,
+ "observations": 12886,
+ "observations_before": 14778,
+ "time_s": 841.4949160000033,
+ "residual_median_px": 0.35825208321153096,
+ "residual_rms_px": 0.7559307724798775,
+ "intrinsics": [],
+ "absolute": {
+  "scale": 1.0,
+  "point_err_mm": {
+   "n": 1451,
+   "median": 0.33337524560528886,
+   "rms": 0.48737756118072356,
+   "p95": 0.9784525041099397,
+   "max": 3.026128745851092
+  },
+  "centre_err_mm": {
+   "n": 60,
+   "median": 0.5797207802426818,
+   "rms": 0.6287761513732799,
+   "p95": 0.9687984577803488,
+   "max": 1.0693927723697927
+  },
+  "rot_err_deg": {
+   "n": 60,
+   "median": 0.07481613208102944,
+   "rms": 0.08652957649910256,
+   "p95": 0.12958018811397867,
+   "max": 0.20487658768751316
+  },
+  "surface_dist_mm": {
+   "n": 2221,
+   "median": 0.20672484201531005,
+   "rms": 1.2963263072477624,
+   "p95": 1.5644873373146326,
+   "max": 15.835357124782176
+  },
+  "point_err_by_r_mm": {
+   "0-50": {
+    "n": 277,
+    "median": 0.32328164091506084,
+    "rms": 0.5101442055360432,
+    "p95": 1.0594379405461503,
+    "max": 1.614700965624096
+   },
+   "50-70": {
+    "n": 318,
+    "median": 0.32323614352186186,
+    "rms": 0.48336492750699306,
+    "p95": 0.9563073689516431,
+    "max": 1.7452179478221233
+   },
+   "70-85": {
+    "n": 677,
+    "median": 0.332979408205554,
+    "rms": 0.46163994935888786,
+    "p95": 0.881554571801059,
+    "max": 3.026128745851092
+   },
+   "85-94": {
+    "n": 179,
+    "median": 0.355122058131101,
+    "rms": 0.5492660473398874,
+    "p95": 1.0647673953375347,
+    "max": 1.5938604763490345
+   }
+  }
+ },
+ "axis": {
+  "scale": 1.0,
+  "point_err_mm": {
+   "n": 1451,
+   "median": 0.2689431968826103,
+   "rms": 0.4509131365507077,
+   "p95": 0.9619898950893886,
+   "max": 3.0828459397725982
+  },
+  "centre_err_mm": {
+   "n": 60,
+   "median": 0.5146460826157406,
+   "rms": 0.5586496826647462,
+   "p95": 0.7757352370236665,
+   "max": 0.9815825348359635
+  },
+  "rot_err_deg": {
+   "n": 60,
+   "median": 0.07485377016759388,
+   "rms": 0.08012575847876807,
+   "p95": 0.10538715618189151,
+   "max": 0.17882708361590252
+  },
+  "surface_dist_mm": {
+   "n": 2221,
+   "median": 0.2045562738289819,
+   "rms": 1.2958616384155222,
+   "p95": 1.5695393980353183,
+   "max": 15.86410138715167
+  },
+  "point_err_by_r_mm": {
+   "0-50": {
+    "n": 277,
+    "median": 0.2633291224699764,
+    "rms": 0.47350300096945835,
+    "p95": 1.0216298717505292,
+    "max": 1.585172928155013
+   },
+   "50-70": {
+    "n": 318,
+    "median": 0.256929574647607,
+    "rms": 0.4455098076867071,
+    "p95": 0.9764264821792745,
+    "max": 1.7164631187975112
+   },
+   "70-85": {
+    "n": 677,
+    "median": 0.2649672907027562,
+    "rms": 0.4226689230284725,
+    "p95": 0.8643352080187385,
+    "max": 3.0828459397725982
+   },
+   "85-94": {
+    "n": 179,
+    "median": 0.30751197423186166,
+    "rms": 0.5224280468850562,
+    "p95": 1.0473375743584432,
+    "max": 1.5638063429147362
+   }
+  }
+ },
+ "similarity": {
+  "scale": 0.9991204495217781,
+  "point_err_mm": {
+   "n": 1451,
+   "median": 0.23516098156946877,
+   "rms": 0.43354631009992217,
+   "p95": 0.9266860231421488,
+   "max": 2.9930958602401243
+  },
+  "centre_err_mm": {
+   "n": 60,
+   "median": 0.34229752890876336,
+   "rms": 0.35905481189677574,
+   "p95": 0.5316581696521775,
+   "max": 0.6730743576381831
+  },
+  "rot_err_deg": {
+   "n": 60,
+   "median": 0.05861722827584913,
+   "rms": 0.06379447227668575,
+   "p95": 0.0903444693024743,
+   "max": 0.14950433740452726
+  },
+  "surface_dist_mm": {
+   "n": 2221,
+   "median": 0.18360279819480338,
+   "rms": 1.2930565128812526,
+   "p95": 1.6081527406428888,
+   "max": 15.832367793783469
+  },
+  "point_err_by_r_mm": {
+   "0-50": {
+    "n": 277,
+    "median": 0.26124982857348256,
+    "rms": 0.49383352173002354,
+    "p95": 1.0769808184235585,
+    "max": 1.613692852195093
+   },
+   "50-70": {
+    "n": 318,
+    "median": 0.2656751629501074,
+    "rms": 0.4349217018593218,
+    "p95": 0.8868587276257931,
+    "max": 1.4777971890178645
+   },
+   "70-85": {
+    "n": 677,
+    "median": 0.22216294036796505,
+    "rms": 0.3936808844394773,
+    "p95": 0.8203405159383398,
+    "max": 2.9930958602401243
+   },
+   "85-94": {
+    "n": 179,
+    "median": 0.1943179977646007,
+    "rms": 0.47333676903929317,
+    "p95": 1.0144802514771372,
+    "max": 1.5696816487102947
+   }
+  }
+ }
+}

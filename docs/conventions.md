@@ -107,8 +107,9 @@ medium.
 that equation is singular:
 - **on a caustic,** where two images merge (det J = 0), the row is infinite;
 - **for rays without a pixel and for a sphere's ring,** it is NaN;
-- **for a camera exactly on a cylinder's axis or at a sphere's centre,** the centre's motion off the axis (or the
-  centre) is not computed: those columns are NaN.
+- **a camera on a cylinder's axis or at a sphere's centre** (within 1e-6 of the innermost radius) takes the limit
+  r_P -> 0 of the inside formulas, the derivative of its own motion off the axis or centre included. There the
+  general formulas, which divide by r_P, would lose more to rounding than the limit's O(r_P) error.
 
 ## Accuracy and its limits
 

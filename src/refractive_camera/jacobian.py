@@ -132,8 +132,9 @@ def image_jacobians(points, camera, window, images):
         d(u, v)/d(omega, c): omega rotates the camera, ``R -> expm([omega]x) R`` (camera frame), and c is its centre
         in the world frame.
 
-    Rows on a caustic (det J = 0) are infinite there, and NaN for rays without a pixel, for a sphere's ring, and for
-    the centre's derivative of a camera exactly on a cylinder's axis.
+    Rows on a caustic (det J = 0) are infinite there, and NaN for rays without a pixel and for a sphere's ring.  A
+    camera on a cylinder's axis or at a sphere's centre (within 1e-6 of the innermost radius) takes the limit r_P -> 0
+    of the inside formulas, its own motion off the axis or centre included.
     """
     from .projection import camera_side
     pts = np.asarray(points, float).reshape(-1, 3)
@@ -162,8 +163,7 @@ def image_jacobians(points, camera, window, images):
 
 def _frame_to_world(dD, W):
     """d(direction)/d(position) (K, 3, 3) from the window frame to the world's, W the window's axes as columns.  A
-    window-frame column that is unknown (NaN, as the off-axis motion of a camera on the axis) makes unknown only the
-    world columns it enters."""
+    window-frame column that is unknown (NaN) makes unknown only the world columns it enters."""
     unknown = np.isnan(dD).any(axis=1)                              # (K, 3): per row, the local columns unknown
     world_unknown = (unknown.astype(float) @ (np.abs(W) > 1e-15).T.astype(float)) > 0
     out = W @ np.nan_to_num(dD, nan=0.0, posinf=np.inf, neginf=-np.inf) @ W.T
@@ -241,7 +241,7 @@ def _cylinder_inside(window, P, X, images, Dl):
     far = images.branch == "far"
     rP, phP = np.hypot(P[0], P[1]), np.arctan2(P[1], P[0])
     rX = np.hypot(X[:, 0], X[:, 1])
-    if rP <= 1e-12 * R[-1]:
+    if rP <= NEAR_CENTRE * R[-1]:
         return _cylinder_on_axis(window, P, X, images, Dl)
     t = cylinder_terms(-lam, -cz, n, R, rX, rP, far)               # exchanged: pinhole radius r_X, point radius r_P
     J = np.stack([np.stack([t["phi_lam"], t["phi_c"]], -1), np.stack([t["z_lam"], t["z_c"]], -1)], -2)
@@ -264,12 +264,30 @@ def _cylinder_inside(window, P, X, images, Dl):
     return dD_dLC @ dLC_dX, dD_dLC @ dLC_dP + dD_drp[:, :, None] * drP + dD_dphp[:, :, None] * dphP
 
 
+# A camera this close to the axis or centre (relative to the innermost radius) takes the limit r_P -> 0: its error is
+# O(r_P) there, below the rounding error of the general formulas, which divide by r_P (both about 1e-6 at the switch).
+NEAR_CENTRE = 1e-6
+
+
+def _sweep_coefficient(nu, R, rX):
+    """T in the sweep of a ray from a camera next to the axis or centre, Phi = beta + Lambda T + O(Lambda^3): media
+    from the camera outward (nu_1 the camera's), R innermost first, rX (K,) the point's distance."""
+    T = sum((1.0 / R[j]) * (1.0 / nu[..., j + 1] - 1.0 / nu[..., j]) for j in range(len(R)))
+    return T - 1.0 / (nu[..., -1] * rX)
+
+
 def _cylinder_on_axis(window, P, X, images, Dl):
     """A camera on the cylinders' axis: Lambda = 0, and each ray stays in the plane through the axis and its point,
     where the interfaces are parallel lines: a flat stack.  In that plane f(C) = sum_k H_k C / sqrt(n_k^2 - C^2) =
     |z_X - z_P|, with H_k the media's radial thicknesses from the axis out; a motion of the point out of the plane
-    turns the plane about the axis.  Of the centre's derivative only the axial
-    part exists in closed form here; the others are NaN."""
+    turns the plane about the axis.
+
+    The camera's own motion off the axis is the limit r_P -> 0 of the inside formulas.  At a camera a distance r_P
+    from the axis, a ray leaving at the angle beta from the camera's radial direction has Lambda = nu_1 r_P sin(beta)
+    and sweeps Phi = beta + Lambda T + O(r_P^3), and the transverse chord of the first medium shortens by
+    r_P cos(beta).  So a motion of the camera across the point's plane (along phat) turns the ray by
+    (nu_1^2 T / n_1) phat phat^T, and a motion within it (along rhat) changes C as the first medium's thickness does
+    in the flat stack."""
     n = np.array(window.indices[::-1])                              # from the camera's medium outward
     R = np.array(window.radii[::-1])                                # innermost first
     rX = np.hypot(X[:, 0], X[:, 1])
@@ -290,8 +308,10 @@ def _cylinder_on_axis(window, P, X, images, Dl):
     g = (-(C / root[:, 0])[:, None] * rh + e) / n[0]                    # dD/dC in the plane
     dDX = (g[:, :, None] * dC_dX[:, None, :]
            + (np.einsum("ij,ij->i", Dl, rh) / rX)[:, None, None] * (ph[:, :, None] * ph[:, None, :]))
-    dDP = np.full_like(dDX, np.nan)
-    dDP[:, :, 2] = g * (-e[:, 2] / fp)[:, None]                        # the axial motion only
+    T = _sweep_coefficient(root, R, rX)
+    dDP = ((root[:, 0] ** 2 * T / n[0])[:, None, None] * (ph[:, :, None] * ph[:, None, :])     # across the plane
+           + (C / (root[:, 0] * fp))[:, None, None] * (g[:, :, None] * rh[:, None, :])      # within it, radially
+           + (-e[:, 2] / fp)[:, None, None] * (g[:, :, None] * zh[None, None, :]))           # along the axis
     return dDX, dDP
 
 
@@ -309,9 +329,14 @@ def _sphere(window, P, X, images, Dl, side):
     rP = np.linalg.norm(P)
     rX = np.linalg.norm(X, axis=1)
     Xh = X / rX[:, None]
-    if rP <= 1e-12 * R[-1]:                                           # a centred camera: every ray radial, undeviated
-        dDX = (np.eye(3)[None] - Xh[:, :, None] * Xh[:, None, :]) / rX[:, None, None]
-        return dDX, np.full_like(dDX, np.nan)
+    if rP <= NEAR_CENTRE * R[-1]:                                     # a centred camera: every ray radial, undeviated
+        # A camera moved off the centre by d sees X along a ray that leaves it at the angle alpha from d, with
+        # Lambda = n_1 |d| sin(alpha) and alpha + Lambda T = the angle of X from d: the direction turns by
+        # n_1 T (I - Xh Xh^T) d (T from the media, camera outward)
+        proj = np.eye(3)[None] - Xh[:, :, None] * Xh[:, None, :]
+        nu = np.broadcast_to(np.array(n[::-1], float), (len(rX), len(n)))
+        T = _sweep_coefficient(nu, np.array(R[::-1], float), rX)
+        return proj / rX[:, None, None], (n[-1] * T)[:, None, None] * proj
     e1 = P / rP
     d_r = Dl @ e1
     Dt = Dl - d_r[:, None] * e1

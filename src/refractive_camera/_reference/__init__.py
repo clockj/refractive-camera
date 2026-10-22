@@ -47,6 +47,22 @@ def project_cylinder(n, R, pinhole, points, tol=1e-9, threads=1):
     return _rows(([(b, L, C, d) for b, L, C, d in cylinder.project(n, R, P0, X, tol)] for X in pts), len(pts))
 
 
+def project_cylinder_pairs(n, R, pinholes, points, tol=1e-9, threads=1):
+    """project_cylinder for pairs (pinhole i, point i).  `threads` is ignored."""
+    n, R = [float(v) for v in n], [float(v) for v in R]
+    C, pts = np.asarray(pinholes, float).reshape(-1, 3), np.asarray(points, float).reshape(-1, 3)
+    return _rows((list(cylinder.project(n, R, c, X, tol)) for c, X in zip(C, pts)), len(pts))
+
+
+def project_sphere_pairs(n, R, pinholes, points, tol=1e-9, threads=1):
+    """project_sphere for pairs (pinhole i, point i).  `threads` is ignored."""
+    n, R = [float(v) for v in n], [float(v) for v in R]
+    C, pts = np.asarray(pinholes, float).reshape(-1, 3), np.asarray(points, float).reshape(-1, 3)
+    O = np.zeros(3)
+    return _rows(([(b, L, 0.0, d) for b, L, d in sphere.project(n, R, O, c, X, tol)] for c, X in zip(C, pts)),
+                 len(pts))
+
+
 def project_sphere(n, R, pinhole, points, tol=1e-9, threads=1):
     """Every image of each point through concentric spheres centred at the origin, by sphere.project().  `threads`
     is ignored."""

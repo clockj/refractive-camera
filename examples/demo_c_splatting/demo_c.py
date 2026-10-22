@@ -133,6 +133,20 @@ def pose_errors(cams, truth):
             "rotation_deg_rms": float(np.degrees(np.sqrt(np.mean(np.square(dr)))))}
 
 
+REFRACTIVE = ("refractive", "afrt", "afrt_pure")      # the cameras that model the tube
+
+
+def splat_camera(kind, cam, dev, args, refine_poses=False):
+    """The splat camera of a model: ours, AFRT's images with our Jacobian, AFRT on its own, or a pinhole."""
+    if refine_poses:
+        return splat.PoseSplatCamera(cam, tg.TUBE, dev, threads=args.threads)
+    if kind in REFRACTIVE:
+        cls = {"refractive": splat.RefractiveSplatCamera, "afrt": splat.AFRTSplatCamera,
+               "afrt_pure": splat.AFRTPureSplatCamera}[kind]
+        return cls(cam, tg.TUBE, dev, threads=args.threads)
+    return splat.PinholeSplatCamera(cam, dev)
+
+
 def draw(gauss, camera, bg, kind, args):
     """Render with the footprint chosen by --footprint: linear (J Sigma J^T) everywhere, or, for the refractive
     cameras, the unscented footprint where the linear one is wider than 6 px (next to the caustics)."""
@@ -152,13 +166,7 @@ def train(kind, cams, gt, args, dev, log_every=500, refine_poses=False):
                             torch.full((n0, 3), 0.5, device=dev))
     gt_t = torch.tensor(gt, device=dev)
     bg = torch.tensor(BG, device=dev, dtype=torch.float32)
-    if kind in ("refractive", "afrt"):
-        cls = splat.RefractiveSplatCamera if kind == "refractive" else splat.AFRTSplatCamera
-        if refine_poses:
-            cls = splat.PoseSplatCamera
-        scams = [cls(c, tg.TUBE, dev, threads=args.threads) for c in cams]
-    else:
-        scams = [splat.PinholeSplatCamera(c, dev) for c in cams]
+    scams = [splat_camera(kind, c, dev, args, refine_poses) for c in cams]
     last = np.full(len(scams), -10 ** 9)
     pose_opt, gauge = None, None
     if refine_poses:
@@ -188,7 +196,7 @@ def train(kind, cams, gt, args, dev, log_every=500, refine_poses=False):
     lost = 0
     for it in range(args.iters):
         v = int(rng.integers(len(scams)))
-        if kind in ("refractive", "afrt") and it - last[v] >= args.refresh:
+        if kind in REFRACTIVE and it - last[v] >= args.refresh:
             scams[v].refresh(gauss.means)
             last[v] = it
         img, uv2d, idx, nbig = draw(gauss, scams[v], bg, kind, args)
@@ -224,9 +232,9 @@ def train(kind, cams, gt, args, dev, log_every=500, refine_poses=False):
         if args.densify_from <= it < args.densify_until and it % 100 == 0 and it > 0:
             n_before = len(gauss.means)
             parents, keep, acc, cnt = densify(gauss, acc, cnt, args,
-                                              r_max=tg.TUBE.radii[-1] if kind in ("refractive", "afrt") else None)
+                                              r_max=tg.TUBE.radii[-1] if kind in REFRACTIVE else None)
             for c in scams:
-                if kind in ("refractive", "afrt"):
+                if kind in REFRACTIVE:
                     c.inherit(parents, n_before)
                     c.remap(keep)
             opt = make_opt()
@@ -286,10 +294,7 @@ def evaluate(kind, gauss, cams, gt, water, wall, dev, args, tag):
     bg = torch.tensor(BG, device=dev, dtype=torch.float32)
     imgs = []
     for c in cams:
-        sc = (splat.AFRTSplatCamera if kind == "afrt" else splat.RefractiveSplatCamera)(c, tg.TUBE, dev,
-                                                                                           threads=args.threads) \
-            if kind in ("refractive", "afrt") \
-            else splat.PinholeSplatCamera(c, dev)
+        sc = splat_camera(kind, c, dev, args)
         sc.refresh(gauss.means)
         img, *_ = draw(gauss, sc, bg, kind, args)
         imgs.append(img.clamp(0, 1).cpu().numpy())
@@ -343,10 +348,10 @@ def main():
     rpath = HERE / "results.json"
     results = json.loads(rpath.read_text()) if rpath.exists() else {}
     for kind in args.models.split(","):
-        key = kind + ("_hybrid" if args.footprint == "hybrid" and kind.startswith(("refractive", "afrt")) else "")
+        key = kind + ("_hybrid" if args.footprint == "hybrid" and kind in ("refractive", "afrt") else "")
         say(f"\n== {key}")
         tr, te, tf = train_cams, test_cams, far_cams
-        model_kind = kind if kind in ("refractive", "afrt") else "pinhole"
+        model_kind = kind if kind in REFRACTIVE else "pinhole"
         refine = kind == "refractive_refined"
         if kind in ("refractive_noisy", "refractive_refined"):
             model_kind = "refractive"

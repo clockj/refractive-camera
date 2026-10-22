@@ -40,6 +40,8 @@ TCP_OFFSET = FINGER_TOP + FINGER[2]      # the grasp point, halfway down the fin
 OPEN = 0.020                             # each finger's inner face from the centre line, open (a 40 mm gap)
 PARK_Z = 0.33                            # the tool waits in the water above the ball's depths, on the axis
 TOOL_GEOMS = ("shaft", "wrist", "left_pad", "right_pad")
+NEEDLE_R, NEEDLE_L = 0.0006, 0.045       # part 4: a needle 1.2 mm thick below the shaft; its tip is the tool centre point
+NEEDLE_GEOMS = ("shaft", "needle")
 
 
 def stone_centres():
@@ -88,8 +90,25 @@ def _add_tool(spec):
     return tool
 
 
-def build_model(ghost=False):
-    """The scene; with `ghost`, a translucent second ball (a mocap body) marks where a perception puts the ball."""
+def _add_needle(spec):
+    """Part 4's tool: the plate and the shaft of the slim tool, and a needle below the shaft, its tip the tool centre
+    point."""
+    G = mujoco.mjtGeom
+    dark, metal = [0.18, 0.18, 0.2, 1], [0.70, 0.72, 0.76, 1]
+    tool = spec.body("attachment").add_body(name="tool")
+    tool.add_geom(name="plate", type=G.mjGEOM_CYLINDER, pos=[0, 0, ADAPTER[1]], size=[ADAPTER[0], ADAPTER[1], 0],
+                  rgba=dark, mass=0.1)
+    tool.add_geom(name="shaft", type=G.mjGEOM_CYLINDER, pos=[0, 0, 0.5 * (SHAFT_TOP + SHAFT_BOTTOM)],
+                  size=[SHAFT_R, 0.5 * (SHAFT_BOTTOM - SHAFT_TOP), 0], rgba=metal, mass=0.12)
+    tool.add_geom(name="needle", type=G.mjGEOM_CYLINDER, pos=[0, 0, SHAFT_BOTTOM + 0.5 * NEEDLE_L],
+                  size=[NEEDLE_R, 0.5 * NEEDLE_L, 0], rgba=[0.92, 0.92, 0.95, 1], mass=0.005)
+    tool.add_site(name="tcp", pos=[0, 0, SHAFT_BOTTOM + NEEDLE_L], size=[0.001, 0, 0], rgba=[0, 1, 0, 0])
+    return tool
+
+
+def build_model(ghost=False, tool="gripper"):
+    """The scene; with `ghost`, a translucent second ball (a mocap body) marks where a perception puts the ball.  The
+    arm holds the slim gripper, or with tool="needle" the needle of part 4."""
     spec = mujoco.MjSpec.from_file(str(fetch_panda() / "panda_nohand.xml"))
     for k in list(spec.keys):
         spec.delete(k)                                         # the arm is parked by inverse kinematics instead
@@ -141,8 +160,13 @@ def build_model(ghost=False):
                            builtin=mujoco.mjtBuiltin.mjBUILTIN_GRADIENT, rgb1=[0.92, 0.94, 0.97],
                            rgb2=[0.42, 0.47, 0.56], width=256, height=256)
     del tex
-    _add_tool(spec)
-    for name in ("link1", "link2", "link3", "link4", "link5", "link6", "link7", "tool", "left_finger", "right_finger"):
+    if tool == "needle":
+        _add_needle(spec)
+        bodies = ("link1", "link2", "link3", "link4", "link5", "link6", "link7", "tool")
+    else:
+        _add_tool(spec)
+        bodies = ("link1", "link2", "link3", "link4", "link5", "link6", "link7", "tool", "left_finger", "right_finger")
+    for name in bodies:
         spec.body(name).gravcomp = 1.0                 # the arm's controller compensates gravity, as a real one does
     wb.add_camera(name="overview", pos=[1.05, -0.62, 0.78], xyaxes=look_at_axes([1.05, -0.62, 0.78], [0.42, 0.0, 0.33]))
     return spec.compile()
@@ -167,10 +191,10 @@ def tank_contacts(m, d, tank_ids):
     return sum(1 for c in d.contact[:d.ncon] if (c.geom1 in tank_ids) != (c.geom2 in tank_ids))
 
 
-def tool_parts(m, d):
+def tool_parts(m, d, names=TOOL_GEOMS):
     """World pose of the tool's parts in the water's reach: (name, centre, rotation, size) per geom."""
     out = []
-    for name in TOOL_GEOMS:
+    for name in names:
         g = m.geom(name)
         out.append((name, d.geom(name).xpos.copy(), d.geom(name).xmat.reshape(3, 3).copy(), g.size.copy()))
     return out

@@ -33,13 +33,14 @@ It needs `pip install .[demo]` plus `opencv-python` and `pycolmap`. It writes `d
    - drop the observations the model cannot explain;
    - refine again.
 
-The same tracks and the same bundle adjustment (Levenberg–Marquardt on the Schur complement) are run with three
+The same tracks and the same bundle adjustment (Levenberg–Marquardt on the Schur complement) are run with four
 camera models:
 
 | Model | How a point's pixel is predicted |
 |---|---|
 | **refractive (ours)** | `project()`: every image; each observation takes its nearest. Analytic Jacobians (`image_jacobians`) |
 | **pinhole + AFRT** | the same window, one AFRT start per point (Belden 2013); the analytic Jacobian at the ray it finds |
+| **AFRT alone** (`--models afrt_pure`) | one AFRT start per point, its Jacobian by central differences of AFRT (13 runs per observation): no formula of the refraction model |
 | **pinhole + distortion** | the window ignored; the intrinsics and OpenCV distortion refined with everything else |
 
 **COLMAP's own pipeline** (pycolmap 4.2, OPENCV camera started at the true focal length) runs on the same images as
@@ -60,11 +61,14 @@ it comes, and on a control: the same scene and cameras with the tube's refractio
 | robot prior | | | | 2.1 mm | 0.29° | |
 | **refractive (ours)** | 2,222 | **0.24 mm** | 0.93 mm | 0.59 mm | 0.076° | 227 s |
 | pinhole + AFRT | 2,220 | 0.24 mm | 0.93 mm | 0.57 mm | 0.073° | 188 s |
+| AFRT alone | 2,221 | 0.24 mm | 0.93 mm | 0.58 mm | 0.075° | 841 s\* |
 | pinhole + distortion | 2,350 | 35.7 mm | 45.7 mm | 6.3 mm | 0.90° | 41 s |
 | COLMAP, through the tube | registers 2 of 60 views | | | | | |
 | COLMAP, same scene without the tube | 3,753 | 0.14 mm\* | 1.1 mm\* | 0.13 mm | 0.034° | |
 
-\* Distance of its points to the true surface (it has no tracks of ours to score). Ours by the same measure: 0.18 mm.
+\* AFRT alone ran on 6 worker processes, ours on 8 threads; this PC's times vary by 10–20 % between runs.
+For COLMAP: the distance of its points to the true surface (it has no tracks of ours to score). Ours by the same
+measure: 0.18 mm.
 
 **What the numbers say:**
 - **Through the tube, the refractive model reconstructs the scene about as well as COLMAP does in air.** It does so
@@ -78,6 +82,8 @@ it comes, and on a control: the same scene and cameras with the tube's refractio
     reconstruction. On the same scene without the tube it reconstructs all 60 views.
 - **Pinhole + AFRT does as well as `project()` here.** Almost every point that SIFT matches across views is seen
   once and away from the shadow's edge, which is where a single AFRT start succeeds.
+  - **AFRT on its own, with no formula of the refraction model, ties too,** at about four times the time: its
+    derivatives come from 13 AFRT runs per observation, where ours are one closed form.
   - Where a point is seen twice, its two images are mirror images of each other, so SIFT does not match them.
   - Where the model has to predict every image — tracking (Demo A), splatting (Demo C) — the difference shows.
 

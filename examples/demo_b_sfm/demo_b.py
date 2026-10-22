@@ -292,6 +292,9 @@ def run_model(name, cams_true, cams_prior, tracks, kps, gtX, gt_ok, workers):
     elif name == "afrt":
         model = sfm.AFRTModel(tg.TUBE, K, DIST, SIZE, workers=workers)
         intr = np.zeros(0)
+    elif name == "afrt_pure":
+        model = sfm.AFRTPureModel(tg.TUBE, K, DIST, SIZE, workers=workers)
+        intr = np.zeros(0)
     else:
         model = sfm.PinholeModel(SIZE)
         intr = np.array([K[0, 0], K[1, 1], K[0, 2], K[1, 2], 0, 0, 0, 0, 0], float)
@@ -458,7 +461,7 @@ def main():
     models = args.models.split(",")
     rpath = HERE / "results.json"
     results = json.loads(rpath.read_text()) if rpath.exists() else {}
-    if any(m in ("refractive", "afrt", "pinhole") for m in models):
+    if any(m in ("refractive", "afrt", "afrt_pure", "pinhole") for m in models):
         kps, descs, gts, gobj = features(cams_true, args.features)
         say(f"features: {np.mean([len(k) for k in kps]):.0f} per view")
         matches = match_and_verify(kps, descs, cams_prior)

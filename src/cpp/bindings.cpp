@@ -157,6 +157,56 @@ py::dict projectSphere(const std::vector<double>& n, const std::vector<double>& 
     return rows(res);
 }
 
+// Pairs (pinhole i, point i): the search run once per pair, on `threads` threads.  A camera inside the window is the
+// point of the outside problem whose pinhole is each point it looks at (refractive_camera.projection).
+std::size_t pairCount(const Points& pinholes, const Points& points) {
+    pointData(pinholes);
+    pointData(points);
+    if (pinholes.shape(0) != points.shape(0)) {
+        throw std::invalid_argument("one pinhole per point: pinholes and points must have the same shape");
+    }
+    return static_cast<std::size_t>(points.shape(0));
+}
+
+py::dict projectCylinderPairs(const std::vector<double>& n, const std::vector<double>& R, const Points& pinholes,
+                              const Points& points, double tol, int threads) {
+    const rc::Stack s = makeStack(n, R);
+    const std::size_t m = pairCount(pinholes, points);
+    const double* C = pinholes.data();
+    const double* X = points.data();
+    std::vector<PointResult> res;
+    {
+        py::gil_scoped_release release;
+        res = forEach(m, threads, [&](std::size_t i) {
+            PointResult pr;
+            rc::CylinderCoverage cov;
+            pr.rays = rc::projectCylinder(s, C + 3 * i, X + 3 * i, &cov, tol);
+            pr.capped = cov.near_branch && !cov.far_branch;
+            return pr;
+        });
+    }
+    return rows(res);
+}
+
+py::dict projectSpherePairs(const std::vector<double>& n, const std::vector<double>& R, const Points& pinholes,
+                            const Points& points, double tol, int threads) {
+    const rc::Stack s = makeStack(n, R);
+    const std::size_t m = pairCount(pinholes, points);
+    const double* C = pinholes.data();
+    const double* X = points.data();
+    const double centre[3] = {0.0, 0.0, 0.0};
+    std::vector<PointResult> res;
+    {
+        py::gil_scoped_release release;
+        res = forEach(m, threads, [&](std::size_t i) {
+            PointResult pr;
+            pr.rays = rc::projectSphere(s, centre, C + 3 * i, X + 3 * i, tol);
+            return pr;
+        });
+    }
+    return rows(res);
+}
+
 } // namespace
 
 PYBIND11_MODULE(_core, m) {
@@ -168,4 +218,10 @@ PYBIND11_MODULE(_core, m) {
     m.def("project_sphere", &projectSphere, py::arg("n"), py::arg("R"), py::arg("pinhole"), py::arg("points"),
           py::arg("tol") = 1e-9, py::arg("threads") = 1,
           "Rows (point, branch, lam, c_z, dir, ring) for every image of each point, and `capped` per point.");
+    m.def("project_cylinder_pairs", &projectCylinderPairs, py::arg("n"), py::arg("R"), py::arg("pinholes"),
+          py::arg("points"), py::arg("tol") = 1e-9, py::arg("threads") = 1,
+          "project_cylinder for pairs (pinhole i, point i); `point` in the rows indexes the pairs.");
+    m.def("project_sphere_pairs", &projectSpherePairs, py::arg("n"), py::arg("R"), py::arg("pinholes"),
+          py::arg("points"), py::arg("tol") = 1e-9, py::arg("threads") = 1,
+          "project_sphere for pairs (pinhole i, point i); `point` in the rows indexes the pairs.");
 }

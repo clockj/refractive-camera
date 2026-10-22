@@ -122,6 +122,25 @@ def test_camera_on_the_axis(kind):
     assert np.max(tr.miss_distance(X[im.point])) < 1e-12
 
 
+@pytest.mark.parametrize("kind", ["cylinder", "sphere"])
+def test_threads_and_backends_agree_from_inside(kind):
+    """The searches of a camera inside, one per point, give the same images on one thread or several, and the two
+    backends the same image counts and rays."""
+    rng = np.random.default_rng(8)
+    win = (rc.CylindricalWindow if kind == "cylinder" else rc.SphericalWindow)((0.100, 0.094), WATER_INSIDE)
+    cam = _camera(np.array([0.085, 0.0, 0.01]), (0.0, 1.0, 0.0))
+    X = _outside_points(rng, 40, r_hi=0.4)
+    one = rc.project(X, cam, win, threads=1)
+    four = rc.project(X, cam, win, threads=4)
+    assert np.array_equal(one.point, four.point) and np.array_equal(np.nan_to_num(one.uv), np.nan_to_num(four.uv))
+    if "cpp" in rc.available_backends():
+        py = rc.project(X, cam, win, backend="python")
+        assert np.array_equal(one.counts(on_sensor=False), py.counts(on_sensor=False))
+        for i in range(len(X)):
+            for d in py.direction[py.rows_of(i)]:
+                assert np.min(np.linalg.norm(one.direction[one.rows_of(i)] - d, axis=1)) < 1e-9
+
+
 def test_points_on_the_camera_side_are_outside_the_model():
     win = rc.CylindricalWindow((0.100, 0.094), AIR_INSIDE)
     im = rc.project(np.array([[0.05, 0.0, 0.0], [0.3, 0.0, 0.0]]), _camera(np.array([0.02, 0, 0]), (1, 0, 0)), win)

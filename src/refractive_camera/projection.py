@@ -89,29 +89,31 @@ class Images:
         return np.flatnonzero(self.point == i)
 
 
-def _project_inside(window, be, centre, points, tol):
+def _project_inside(window, be, centre, points, tol, threads=1):
     """Every image of points outside a curved window, for a camera inside its innermost interface.
 
     Light paths are reversible: the rays joining two points do not depend on which of them is the camera.  So each
     point is the pinhole of the outside problem whose object point is the camera, solved by the complete search of
-    either backend.  Each ray found is traced from the point to the camera, and its direction there, reversed, is
-    the camera's line of sight; its momenta change sign and its branch is kept."""
+    either backend, one search per point (the compiled backend runs them on `threads` threads).  Each ray found is
+    traced from the point to the camera, and its direction there, reversed, is the camera's line of sight; its momenta
+    change sign and its branch is kept."""
     from .tracing import trace
     n, R = list(window.indices), list(window.radii)
     P = window.to_local(centre)
-    X = window.to_local(points)
-    solve = be.project_cylinder if window.kind == "cylinder" else be.project_sphere
-    keys = ("branch", "dir", "ring", "capped", "lam")
-    parts = {k: [] for k in keys}
-    point = []
-    for i, x in enumerate(X):
-        r = solve(n, R, x, P[None], tol, 1)
-        m = len(r["branch"])
-        point.append(np.full(m, i, np.int64))
-        for k in keys:
-            parts[k].append(np.asarray(r[k]))
-    rows = {k: np.concatenate(v) if v else np.zeros(0) for k, v in parts.items()}
-    rows["point"] = np.concatenate(point) if point else np.zeros(0, np.int64)
+    X = np.ascontiguousarray(window.to_local(points), dtype=float).reshape(-1, 3)
+    pairs = getattr(be, "project_cylinder_pairs" if window.kind == "cylinder" else "project_sphere_pairs", None)
+    if pairs is not None:
+        r = pairs(n, R, X, np.ascontiguousarray(np.broadcast_to(P, X.shape)), tol, threads)
+        rows = {k: np.asarray(r[k]) for k in ("point", "branch", "dir", "ring", "capped", "lam")}
+    else:                                                # a compiled core built before the pairs: one call per point
+        solve = be.project_cylinder if window.kind == "cylinder" else be.project_sphere
+        res = [solve(n, R, x, P[None], tol, 1) for x in X]
+        rows = {k: np.concatenate([np.asarray(o[k]) for o in res]) if res else np.zeros(0)
+                for k in ("branch", "dir", "ring", "capped", "lam")}
+        rows["point"] = np.concatenate([np.full(len(o["branch"]), i) for i, o in enumerate(res)]) if res \
+            else np.zeros(0, np.int64)
+        rows["dir"] = rows["dir"].reshape(-1, 3)
+    rows["point"] = rows["point"].astype(np.int64)
     rows["ring"] = rows["ring"].astype(bool)
     rows["capped"] = rows["capped"].astype(bool)
     k = len(rows["point"])
@@ -184,7 +186,7 @@ def project(points, camera, window, *, backend=None, tol=1e-9, threads=1):
     elif side == "inside":
         if window.kind not in ("cylinder", "sphere"):
             raise TypeError(f"unsupported window {window!r}")
-        rows = _project_inside(window, _backend(backend), centre, pts[idx], tol)
+        rows = _project_inside(window, _backend(backend), centre, pts[idx], tol, threads)
         direction = window.vectors_to_world(rows["dir"])
     else:
         be = _backend(backend)

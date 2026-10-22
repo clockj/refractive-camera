@@ -3,6 +3,7 @@
 ```sh
 python examples/demo_d_arm/demo_d.py --kinds refractive,afrt,pinhole   # 40 ball paths x 3 perceptions, ~15 min
 python examples/demo_d_arm/fold_zone.py                                # parts 2-3: tracking next to the wall
+python examples/demo_d_arm/precision.py --workers 5                     # part 4: a needle at the ball's centre, ~4 min
 python examples/demo_d_arm/video.py --seed 9                           # catch.mp4 and catch.gif
 python examples/demo_d_arm/figures.py                                  # summary.png, visibility.png, fold_zone.png
 ```
@@ -121,7 +122,8 @@ model instead:
 **Results** (`fold_zone_out.txt`): the fit measures the ball to **0.03 mm** at the median next to the wall, 40 times
 better than the centroids (1.37 mm for ours, 1.42 mm for AFRT; table above).
 - It needs every image of the ball's surface (where the wall shows part of it twice, or clips it) and the Jacobian of
-  each. One AFRT start gives neither.
+  each. One AFRT start gives one image per surface point and no derivative; with finite differences of its own
+  iterations it can make the same fit, at about 14 times the cost (part 4).
 - A ray tracer could predict the same blobs by rendering each guess of the ball's position, at the cost of rendering
   frames inside a fit.
 
@@ -133,6 +135,48 @@ so the camera is a stereo pair.
   images of the ball's centre, and two rays from one camera cross at a shallow angle.
 - **Pinhole + AFRT:** one AFRT start knows one image, so the camera gives a ray, not a point.
 - **Pinhole + distortion:** two straight lines from one centre meet only there.
+
+## Part 4: putting a needle at the ball's centre (`precision.py`)
+
+The ball rests at a point of the tank, and the arm, holding a needle on the slim tool's shaft, must put the needle's
+tip at the ball's centre.
+- **What the arm sees:** the three tank cameras' frames, taken with the needle parked above the water.
+- **How it moves:** it brings the tip onto the perception's estimate and servos it there with its own joint angles,
+  to 0.001 mm, so the perception alone decides.
+- **Success:** the tip ends within 0.5 mm of the true centre, and the robot never touches the tank.
+- **Placements:** 20 in the open water (40–120 mm from the axis) and 20 next to the wall (136–160 mm).
+
+| Perception | How it locates the ball | The window's closed forms |
+|---|---|---|
+| **ours, whole ball** | part 3's fit: every image of the ball's surface by `project()`, weighted with `image_jacobians` | used |
+| AFRT alone, whole ball | the same fit with AFRT only: each surface point's image from one AFRT start, every derivative by finite differences of AFRT (`afrt_ball.py`) | none |
+| AFRT, blob centroids | parts 1–2's AFRT perception | none |
+| pinhole + distortion | parts 1–2 | none |
+
+**Results** (`precision_out.txt`):
+
+| Perception | Open water: succeed, median error | Next to the wall: succeed, median error | Time per estimate |
+|---|---:|---:|---:|
+| **ours, whole ball** | **20 of 20**, 0.016 mm | **19 of 20**, 0.027 mm | **0.9 s** |
+| AFRT alone, whole ball | 20 of 20, 0.025 mm | 18 of 20, 0.023 mm | 13 s |
+| AFRT, blob centroids | 20 of 20, 0.35 mm | 5 of 20, 1.0 mm | 0.005 s |
+| pinhole + distortion | 2 of 20, 1.1 mm | 0 of 20, 12 mm | 0.001 s |
+
+![the needle task: success against tolerance](precision.png)
+
+- **Fitting the whole ball is what lands the needle next to the wall.** From blob centroids AFRT succeeds in 5 of 20
+  placements there; fitted to the whole ball, in 18.
+- **AFRT alone can make that fit, at 14 times the cost.** With finite differences of its own iterations it is about
+  as accurate as ours here.
+  - It lacks the second images of the parts of the ball the wall shows twice. It leaves that blob out of the fit,
+    which costs little in this test.
+  - The exception is where the ball's centre itself is seen twice: in one such placement ours lands 0.30 mm from the
+    centre and AFRT 0.86 mm.
+- **Ours predicts every blob and uses it,** in under a second on one core, with the derivative in closed form. In the
+  open water it is also the most precise: every tip within 0.03 mm.
+- **The detector.** Part 4 samples its coarse pass every 2 × 2 pixels (parts 1–3: 4 × 4). At 4 × 4 it missed a small
+  second copy of the ball (17 px of 430, 53 px from the main blob), exactly a part that AFRT does not predict, and
+  that biased ours' fit in one trial.
 
 **Limits:**
 - the frames are synthetic, with no noise, blur or reflections;

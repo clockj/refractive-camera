@@ -51,7 +51,7 @@ def cameras():
 # ---- rendering the camera frames ---------------------------------------------------------------------------------
 
 TOOL_RGB = {"shaft": (0.70, 0.72, 0.76), "wrist": (0.18, 0.18, 0.2), "left_pad": (0.93, 0.93, 0.95),
-            "right_pad": (0.93, 0.93, 0.95)}
+            "right_pad": (0.93, 0.93, 0.95), "needle": (0.92, 0.92, 0.95)}
 
 
 def inside_objects(ball, tool):
@@ -62,7 +62,7 @@ def inside_objects(ball, tool):
         objs.append(Sphere(c, r, NoiseTexture(0.012, [tuple(0.6 * np.array(col)), col, tuple(np.minimum(1.3 * np.array(col), 1))],
                                               spot=tuple(0.4 * np.array(col)), seed=int(100 * r))))
     for name, pos, R, size in tool:
-        if name == "shaft":
+        if name in ("shaft", "needle"):
             objs.append(Cylinder(pos, size[0], size[1], Uniform(TOOL_RGB[name]), rotation=R))
         else:
             objs.append(Box(pos, tuple(size), Uniform(TOOL_RGB[name]), rotation=R))

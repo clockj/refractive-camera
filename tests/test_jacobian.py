@@ -14,7 +14,11 @@ def _rot(w):
 
 
 def _follow(uv, branch, images):
+    """The moved point's image nearest to uv on the same branch; or on any branch, where the label itself flips (a
+    camera on the axis or at the centre, moved off it: its rays turn from near to far while the image moves on)."""
     rows = np.flatnonzero(images.branch == branch)
+    if not len(rows):
+        rows = np.flatnonzero(np.isfinite(images.uv).all(1))
     return images.uv[rows[np.argmin(np.linalg.norm(images.uv[rows] - uv, axis=1))]]
 
 
@@ -120,8 +124,8 @@ def _cases():
 @pytest.mark.parametrize("name,win,cam,pts", _cases(), ids=[c[0] for c in _cases()])
 def test_derivatives_every_window(name, win, cam, pts):
     """d(uv)/dX and d(uv)/d(pose) against central differences of project(), for flat windows, spheres seen from
-    outside, and cameras inside cylinders and spheres (off centre, and on the axis or centre, where only the
-    derivatives that exist in closed form are returned and the others are NaN)."""
+    outside, and cameras inside cylinders and spheres (off centre, and on the axis or at the centre, where the
+    derivative of the camera's motion off it is the closed-form limit r_P -> 0)."""
     im = rc.project(pts, cam, win)
     dP, dS = image_jacobians(pts, cam, win, im)
     h = 1e-7

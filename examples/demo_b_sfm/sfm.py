@@ -171,6 +171,56 @@ class AFRTModel(RefractiveModel):
         return uv, Jp, Jc, np.zeros((n, 2, 0))
 
 
+FD_STEP = 1e-6                                  # m, AFRT's finite differences
+
+
+def _afrt_fd_one(args):
+    """One observation for AFRT on its own: the ray to x, and the rays with x and with the camera centre moved by
+    +-FD_STEP along each axis; None if any of the 13 fails."""
+    centre, x = args
+    out = [_afrt_one((centre, x))]
+    for e in np.eye(3) * FD_STEP:
+        out += [_afrt_one((centre, x + e)), _afrt_one((centre, x - e))]
+    for e in np.eye(3) * FD_STEP:
+        out += [_afrt_one((centre + e, x)), _afrt_one((centre - e, x))]
+    return None if any(d is None for d in out) else np.array(out)
+
+
+class AFRTPureModel(AFRTModel):
+    """AFRT on its own, with no closed form of the window: the pixel from one AFRT start, and its derivatives in the
+    point and in the camera's centre by central differences of AFRT (13 runs per observation).  The derivative in the
+    camera's rotation is the lens model's own (a turn of the camera does not change the ray AFRT finds)."""
+    name = "afrt_pure"
+
+    def predict(self, Rs, cs, intr, X, obs_view, obs_point, obs_uv, jac=True):
+        if not jac:
+            return super().predict(Rs, cs, intr, X, obs_view, obs_point, obs_uv, jac=False)
+        n = len(obs_view)
+        uv = np.full((n, 2), np.nan)
+        Jp = np.zeros((n, 2, 3))
+        Jc = np.zeros((n, 2, 6))
+        if self._pool is None:
+            self._pool = ProcessPoolExecutor(self.workers, initializer=_afrt_init, initargs=(self.window,))
+        runs = list(self._pool.map(_afrt_fd_one, [(cs[i], X[p]) for i, p in zip(obs_view, obs_point)], chunksize=64))
+        for i in np.unique(obs_view):
+            o = np.array([k for k in np.flatnonzero(obs_view == i) if runs[k] is not None], int)
+            if not len(o):
+                continue
+            cam = camera(self.K, self.dist, Rs[i], cs[i], self.size)
+            D = np.stack([runs[k] for k in o])                             # (m, 13, 3)
+            u, front = cam.pixels_from_directions(D.reshape(-1, 3) @ cam.R.T)
+            u = u.reshape(len(o), 13, 2)
+            ok = front.reshape(len(o), 13).all(1) & np.isfinite(u).all((1, 2))
+            o, u, D = o[ok], u[ok], D[ok]
+            uv[o] = u[:, 0]
+            for a in range(3):
+                Jp[o, :, a] = (u[:, 1 + 2 * a] - u[:, 2 + 2 * a]) / (2 * FD_STEP)
+                Jc[o, :, 3 + a] = (u[:, 7 + 2 * a] - u[:, 8 + 2 * a]) / (2 * FD_STEP)
+            d_cam = D[:, 0] @ cam.R.T
+            Jc[o, :, :3] = pixel_jacobian(cam, d_cam) @ -_skew(d_cam)
+        return uv, Jp, Jc, np.zeros((n, 2, 0))
+
+
 def _from_directions(window, cam, X, D):
     """Rows (point, branch, Lambda, C_z, direction) of rays D from the camera that reach the points X."""
     P = window.to_local(cam.center)

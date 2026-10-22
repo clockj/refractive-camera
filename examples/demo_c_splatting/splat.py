@@ -427,6 +427,58 @@ class AFRTSplatCamera(RefractiveSplatCamera):
         self.cz = torch.tensor(cz[keep], dtype=DT, device=dev)
 
 
+class AFRTPureSplatCamera:
+    """Pinhole + AFRT on its own, with no closed form of the window: at every step each Gaussian's image comes from one
+    AFRT start (batched, `afrt_torch`), its footprint Jacobian from central differences of AFRT (step h), and its depth
+    is the straight distance from the camera.  The pixel enters autograd as uv0 + J (X - X0), so its gradient in the
+    Gaussian's mean is that same Jacobian.  At most one image per Gaussian, none where AFRT does not converge."""
+
+    def __init__(self, cam, window, device, threads=8, h=1e-5, kmax=300):
+        from afrt_torch import AFRTCamera
+        self.cam, self.window, self.device, self.size = cam, window, device, cam.size
+        self.ac = AFRTCamera(cam, window, device)
+        self.h, self.kmax = h, kmax
+        self.Rc = torch.tensor(cam.R, dtype=DT, device=device)
+        self.K = torch.tensor(cam.K, dtype=DT, device=device)
+        self.dist = [float(v) for v in cam.dist]
+        self.centre = torch.tensor(cam.center, dtype=DT, device=device)
+        self.failures = 0
+        self.last_keep = torch.zeros(0, dtype=torch.long, device=device)
+
+    def refresh(self, means):
+        pass                                                   # nothing is tracked between steps
+
+    def inherit(self, parents, n_before):
+        pass
+
+    def remap(self, keep_mask):
+        pass
+
+    def project(self, means):
+        with torch.no_grad():
+            X0 = means.detach().to(DT)
+            M = len(X0)
+            E = torch.eye(3, dtype=DT, device=X0.device) * self.h
+            batch = torch.cat([X0] + [X0 + e for e in E] + [X0 - e for e in E])     # one AFRT run for all seven
+            d, done = self.ac.directions(batch, kmax=self.kmax)
+            dc = d @ self.Rc.T
+            uv_all, _ = _pixels(self.K, self.dist, dc)
+            ok_all = (done & (dc[:, 2] > 0) & torch.isfinite(uv_all).all(1)).reshape(7, M)
+            uv_all = uv_all.reshape(7, M, 2)
+            uv0 = uv_all[0]
+            J = torch.stack([(uv_all[1 + i] - uv_all[4 + i]) / (2 * self.h) for i in range(3)], -1)    # (M, 2, 3)
+            W, H = self.size
+            m = 64.0
+            ok = ok_all.all(0) & (uv0[:, 0] > -m) & (uv0[:, 0] < W + m) & (uv0[:, 1] > -m) & (uv0[:, 1] < H + m)
+            self.failures += int((~ok_all[0]).sum())
+            keep = torch.nonzero(ok).flatten()
+            self.last_keep = keep
+        Xg = means.to(DT)[keep]
+        uv = uv0[keep] + (J[keep] @ (Xg - X0[keep])[..., None])[..., 0]
+        depth = torch.linalg.norm(X0[keep] - self.centre, dim=1)
+        return keep, uv, J[keep], depth, torch.ones(len(keep), dtype=torch.bool, device=X0.device)
+
+
 # ---- the Gaussians ------------------------------------------------------------------------------------------------
 
 def quat_to_rot(q):
