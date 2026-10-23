@@ -214,7 +214,9 @@ comparison is circular.
   - the needle task (D, part 4), fitted to the whole ball: like ours, it lands all 20 placements next to the wall
     within 0.5 mm. Within 0.1 mm it lands 17, against ours' 20, and it takes 18 times the time per estimate;
   - splatting (C), with its own images and footprints: the same quality as ours with the same footprint (32.3
-    against 31.7 dB, but 0.4 dB behind next to the wall), at 7.4 times the training time.
+    against 31.7 dB, but 0.4 dB behind next to the wall), at 7.4 times the training time. Its lead came from how the
+    demo trains ours. With ours drawing in training every image it is scored on, and a mask of the water for both,
+    the two tie (33.3 against 33.1 dB), ours still ahead next to the wall, at a quarter of the time (Demo C's README).
 
   What it cannot do stays the same: the second image of a point, and telling a hidden point from a failed search.
 - **A camera inside its housing** (E): a pinhole + distortion calibrated in the water is nearly exact behind a dome

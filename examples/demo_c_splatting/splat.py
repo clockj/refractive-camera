@@ -11,6 +11,13 @@ not at all, so the projection returns a list of "splats", each tagged with its G
   implicit-function derivative; J is the analytic Jacobian of `refractive_camera.jacobian`.
 * ``PinholeSplatCamera``: straight rays, with OpenCV distortion if given.  The ordinary 3D Gaussian splatting camera.
 
+Two options of the refractive cameras, off by default:
+* ``mask`` (H, W): the pixels whose ray reaches the water (`water_mask`).  A Gaussian in the water can light no other
+  pixel, so the rasterizer draws nothing there.  Next to the wall the linear footprint of an image at the water's edge
+  would otherwise spill onto pixels that see only the background.
+* ``repair`` (ours): an image that Newton's method loses at a step is not skipped until the view's next search; its
+  Gaussian is searched again by `project()` at once.
+
 The rasterizer is tile-based and differentiable through autograd; it needs no compiled CUDA.
 """
 import math
@@ -54,8 +61,18 @@ def _pixels(K, dist, dc):
     return uv, A @ P
 
 
+def water_mask(cam, window):
+    """(H, W) bool: the pixels whose ray, through the pixel's centre, reaches the innermost medium.  One forward trace
+    per pixel (Snell's law at each surface), so no closed form of the window enters."""
+    W, H = cam.size
+    V, U = np.meshgrid(np.arange(H, dtype=float), np.arange(W, dtype=float), indexing="ij")
+    o, d = cam.rays(np.c_[U.ravel(), V.ravel()])
+    return rc.trace(window, o, d).ok.reshape(H, W)
+
+
 class PinholeSplatCamera:
     """uv = K distort(R X + t); the window, if any, ignored."""
+    mask = None
 
     def __init__(self, cam, device):
         self.size = cam.size
@@ -82,6 +99,8 @@ class PinholeSplatCamera:
 
 class RefractiveSplatCamera:
     """Every image of every Gaussian through a cylindrical window."""
+    mask = None
+    repair = False
 
     def __init__(self, cam, window, device, threads=8):
         if window.kind != "cylinder":
@@ -105,6 +124,7 @@ class RefractiveSplatCamera:
         self.lam = torch.zeros(0, dtype=DT, device=device)
         self.cz = torch.zeros(0, dtype=DT, device=device)
         self.failures = 0
+        self.searched_again = 0
 
     def refresh(self, means):
         """All images of every Gaussian centre, by project()."""
@@ -148,7 +168,37 @@ class RefractiveSplatCamera:
     def _terms(self, lam, cz, rX, far):
         return cylinder_terms(lam, cz, self.n, self.radii, self.rP, rX, far, xp=torch)
 
+    def _search_again(self, means, gs):
+        """The images of Gaussians gs, found afresh by project(), in place of the ones tracked for them."""
+        im = rc.project(means.detach().to(DT)[gs].cpu().numpy(), self.cam, self.window, threads=self.threads)
+        W, H = self.size
+        m = 64.0
+        keep = (np.isfinite(im.uv).all(1) & (im.uv[:, 0] > -m) & (im.uv[:, 0] < W + m) & (im.uv[:, 1] > -m)
+                & (im.uv[:, 1] < H + m))
+        dev = self.device
+        old = torch.isin(self.g, gs)
+        self.g = torch.cat([self.g[~old], gs[torch.tensor(im.point[keep], dtype=torch.long, device=dev)]])
+        self.far = torch.cat([self.far[~old], torch.tensor(im.branch[keep] == "far", device=dev)])
+        self.lam = torch.cat([self.lam[~old], torch.tensor(im.lam[keep], dtype=DT, device=dev)])
+        self.cz = torch.cat([self.cz[~old], torch.tensor(im.c_z[keep], dtype=DT, device=dev)])
+
     def project(self, means, newton_iters=2):
+        """As `_project`; with `repair`, the Gaussians whose images Newton's method loses at this step are searched
+        again first (an image skipped for good, such as one that grazes, is searched again at every step)."""
+        if self.repair:
+            failures = self.failures
+            with torch.no_grad():
+                self._project(means, newton_iters)
+            self.failures = failures                    # counted by the call below: the images still lost
+            lost = torch.ones(len(self.g), dtype=torch.bool, device=self.device)
+            lost[self.last_keep] = False
+            if bool(lost.any()):
+                gs = torch.unique(self.g[lost])
+                self.searched_again += len(gs)
+                self._search_again(means, gs)
+        return self._project(means, newton_iters)
+
+    def _project(self, means, newton_iters=2):
         """Pixels, footprint Jacobians and depths of the images that Newton's method keeps up with.
 
         Only the images it keeps enter the autograd graph: an image dropped next to grazing would otherwise carry an
@@ -245,6 +295,7 @@ def sigma_camera(cam, rows, n_sigma):
     sub.lam = cam.lam[rows].repeat_interleave(n_sigma)
     sub.cz = cam.cz[rows].repeat_interleave(n_sigma)
     sub.failures = 0
+    sub.repair = False                                  # each sigma point stays on its image's branch
     return sub
 
 
@@ -279,7 +330,8 @@ def render_ut(gauss, camera, bg, max_radius=48.0, min_points=4, newton_iters=6, 
     m32 = out_m.float()
     m32.retain_grad() if m32.requires_grad else None                  # screen-space gradients, for densification
     img = rasterize(m32[ok], out_c[ok].float(), torch.sigmoid(gauss.color_logits)[idx[ok]],
-                    torch.sigmoid(gauss.opacity_logits)[idx[ok]], depth[ok], camera.size[0], camera.size[1], bg)
+                    torch.sigmoid(gauss.opacity_logits)[idx[ok]], depth[ok], camera.size[0], camera.size[1], bg,
+                    mask=camera.mask)
     return img, m32, idx, int((~ok).sum())
 
 
@@ -432,6 +484,7 @@ class AFRTPureSplatCamera:
     AFRT start (batched, `afrt_torch`), its footprint Jacobian from central differences of AFRT (step h), and its depth
     is the straight distance from the camera.  The pixel enters autograd as uv0 + J (X - X0), so its gradient in the
     Gaussian's mean is that same Jacobian.  At most one image per Gaussian, none where AFRT does not converge."""
+    mask = None
 
     def __init__(self, cam, window, device, threads=8, h=1e-5, kmax=300):
         from afrt_torch import AFRTCamera
@@ -511,22 +564,26 @@ class Gaussians(torch.nn.Module):
 
 # ---- rasterizer ---------------------------------------------------------------------------------------------------
 
-def _chunk(px, py, uv, con, op, col, valid, Tin):
-    """One chunk of depth-sorted splats over a set of tiles: the colour it adds and the light it lets through."""
+def _chunk(px, py, uv, con, op, col, valid, Tin, pm=None):
+    """One chunk of depth-sorted splats over a set of tiles: the colour it adds and the light it lets through.
+    pm: the tiles' pixels that may be lit (1) or not (0), if a mask is given."""
     dx = px[:, :, None] - uv[:, None, :, 0]
     dy = py[:, :, None] - uv[:, None, :, 1]
     power = -0.5 * (con[:, None, :, 0] * dx * dx + con[:, None, :, 2] * dy * dy) - con[:, None, :, 1] * dx * dy
     alpha = torch.clamp(op[:, None, :] * torch.exp(torch.clamp(power, max=0.0)), max=0.99)
     alpha = alpha * (valid[:, None, :] & (power <= 0)).to(alpha.dtype)
+    if pm is not None:
+        alpha = alpha * pm[:, :, None]
     alpha = torch.where(alpha < 1.0 / 255, torch.zeros_like(alpha), alpha)
     Tc = torch.cumprod(torch.cat([torch.ones_like(alpha[:, :, :1]), 1 - alpha[:, :, :-1]], 2), 2)
     w = alpha * Tc * Tin[:, :, None]
     return torch.einsum("tpk,tkc->tpc", w, col), torch.prod(1 - alpha, 2)
 
 
-def rasterize(uv, cov2d, color, opacity, depth, W, H, bg, tile=16, chunk=64):
+def rasterize(uv, cov2d, color, opacity, depth, W, H, bg, tile=16, chunk=64, mask=None):
     """Alpha-composite 2-D Gaussians front to back.  uv (S, 2), cov2d (S, 2, 2), color (S, 3), opacity (S,),
-    depth (S,).  Returns the image (H, W, 3)."""
+    depth (S,); mask (H, W), if given: the pixels the splats may light (the others show the background).  Returns the
+    image (H, W, 3)."""
     dev = uv.device
     S = len(uv)
     a, b, c = cov2d[:, 0, 0] + 0.3, cov2d[:, 0, 1], cov2d[:, 1, 1] + 0.3        # 0.3 px^2: 3DGS's low-pass filter
@@ -568,6 +625,11 @@ def rasterize(uv, cov2d, color, opacity, depth, W, H, bg, tile=16, chunk=64):
     out = torch.zeros(n_t, tile * tile, 3, device=dev, dtype=dt)
     T = torch.ones(n_t, tile * tile, device=dev, dtype=dt)
     uvf, conf, colf, opf = uv, conic.to(dt), color.to(dt), opacity.to(dt)
+    pm = None
+    if mask is not None:                                     # the mask, laid out like the tiles' pixels
+        mt = torch.zeros(ty * tile, tx * tile, device=dev, dtype=dt)
+        mt[:H, :W] = torch.as_tensor(mask, device=dev).to(dt)
+        pm = mt.reshape(ty, tile, tx, tile).permute(0, 2, 1, 3).reshape(n_t, tile * tile)
     for c0 in range(0, kmax, chunk):
         # tiles that still have splats in this chunk and light left to block
         live = torch.nonzero((counts > c0) & (T.detach().max(1).values > 1e-4)).flatten()
@@ -578,7 +640,7 @@ def rasterize(uv, cov2d, color, opacity, depth, W, H, bg, tile=16, chunk=64):
         gidx = torch.where(valid, starts[live, None] + j[None, :], torch.zeros_like(j[None, :]))
         s = sid[gidx]                                                           # (L, k)
         o_add, t_mul = checkpoint(_chunk, pix_x[live], pix_y[live], uvf[s], conf[s], opf[s], colf[s], valid,
-                                  T[live], use_reentrant=False)
+                                  T[live], None if pm is None else pm[live], use_reentrant=False)
         out = out.index_add(0, live, o_add)
         T = T.index_copy(0, live, T[live] * t_mul)
     out = out + T[:, :, None] * bg.to(dt)
@@ -598,7 +660,8 @@ def render(gauss, camera, bg, max_radius=48.0):
     uv32 = uv.float()
     uv32.retain_grad() if uv32.requires_grad else None
     img = rasterize(uv32[small], cov2[small].float(), torch.sigmoid(gauss.color_logits)[idx[small]],
-                    torch.sigmoid(gauss.opacity_logits)[idx[small]], depth[small], camera.size[0], camera.size[1], bg)
+                    torch.sigmoid(gauss.opacity_logits)[idx[small]], depth[small], camera.size[0], camera.size[1], bg,
+                    mask=camera.mask)
     return img, uv32, idx, int(big.sum())
 
 

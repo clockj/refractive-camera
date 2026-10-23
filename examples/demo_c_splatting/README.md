@@ -6,6 +6,7 @@ python examples/demo_c_splatting/demo_c.py --models afrt
 python examples/demo_c_splatting/demo_c.py --models refractive,afrt --footprint hybrid   # the footprint next to caustics
 python examples/demo_c_splatting/demo_c.py --models refractive_noisy,refractive_refined   # from a robot's poses
 python examples/demo_c_splatting/demo_c.py --models afrt_pure   # AFRT alone, no formula of ours: about 4.6 hours
+python examples/demo_c_splatting/demo_c.py --models refractive,afrt_pure --refresh 1 --water-mask   # the fair comparison
 python examples/demo_c_splatting/derivatives.py         # the Jacobian AFRT would need, and the images it misses
 python examples/demo_c_splatting/figures.py             # the figures below, and orbit.gif
 ```
@@ -186,13 +187,42 @@ formula of the refraction model enters. It was trained with the linear footprint
     new poses. It ends with fewer Gaussians (22,480 against 29,008), and they lie closer to the stones.
   - Next to the wall it is 0.3–0.4 dB behind, where ours draws the second images. Ours' own Gaussians, drawn with one
     image each, lose 0.2–0.3 dB there too (the streaks' table above).
-- **Why it gains over the whole image was not traced.**
-  - It is also ahead of the AFRT model above in all 24 views, and that model draws the same images.
-  - The two differ in the footprint. AFRT alone takes its Jacobian from differences with a 10 µm step, and it draws
-    no Gaussian where one of its seven AFRT runs fails.
-  - Each model was trained once, so the spread between whole training runs is not known.
 - **The time is AFRT's:** 4.1 s per step on average, against 0.56 s for ours. A view takes 5.9 s for AFRT's pixels
   and its finite differences, against 68 ms for ours' projection and Jacobian.
+
+**Why it gains: how the demo trains ours, not the projection.** The score is taken through the window, over every
+pixel. The development campaign found two causes:
+- **Ours did not draw in training every image it draws when scored.** The demo searches a view's images every 500
+  steps and follows them by two Newton steps in between. An image whose two steps did not converge was skipped until
+  the view's next search. A probe that searched the trained view afresh found 11 % of the images undrawn on average,
+  and up to 58 % in one view. AFRT alone runs AFRT for every Gaussian at every step, so it trains on the images it is
+  scored on. Searching every step (`--refresh 1`) brings ours' Gaussians as close to the stones as AFRT alone's.
+- **The second images' linear footprints spill past the water's edge.** A Gaussian seen twice has its second image at
+  the water's edge in the view, where its footprint is long. The part beyond the edge lights pixels whose rays never
+  reach the water. AFRT alone never finds those images, so it put half as much stray light there.
+
+Two options, off by default (the tables above are without them), remove the two causes:
+- **`--repair`:** at each step, ours searches again at once, with `project()`, the Gaussians whose image Newton's
+  method lost. Each view is still searched in full every `--refresh` steps. No image is skipped any more. The only
+  images a fresh search adds are second images gained since the view's last search (0.2 %).
+- **`--water-mask`:** each view's pixels whose central ray reaches the water are traced once (`splat.water_mask`).
+  A Gaussian in the water lights only those pixels, so a model shows exactly the background outside the water.
+
+| Linear footprint, seed 0 | Between the training views (near the wall) | From new poses (near the wall) | Opaque Gaussians to the true surface | Training |
+|---|---|---|---|---:|
+| ours, as above | 31.7 (24.7) dB | 28.7 (22.5) dB | 0.99 mm | 37 min |
+| ours, `--repair` | 32.1 (24.4) dB | 29.0 (22.4) dB | 0.88 mm | 38 min |
+| ours, `--refresh 1` | 32.0 (24.5) dB | 28.8 (22.4) dB | 0.89 mm | 75 min |
+| **ours, `--refresh 1 --water-mask`** | **33.3 (24.8) dB** | **30.1 (22.9) dB** | **0.87 mm** | **65 min** |
+| AFRT alone, `--water-mask` | 33.1 (24.6) dB | 30.1 (22.5) dB | 0.88 mm | 4.4 h |
+
+- **With the same mask, the two tie over the whole image:** ours is ahead in 6 of the 12 views between the training
+  views and in 7 of 12 from new poses. Two training runs that differ only in their seed differ by 0.1–0.3 dB.
+- **Ours stays ahead next to the wall,** by 0.2–0.3 dB, where it draws the second images, and it trains four times as
+  fast.
+- **The mask helps ours more** (1.2 against 0.8 dB), since ours draws the second images that spill. It also helps
+  inside the water: the Gaussians no longer offset the spill.
+- `--repair` scores like searching every step, at the demo's own training time.
 
 ## Training from a robot's poses (`--models refractive_noisy,refractive_refined`)
 
