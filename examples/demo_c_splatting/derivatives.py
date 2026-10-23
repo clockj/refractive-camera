@@ -150,6 +150,7 @@ def main():
     big = []
     times = {k: [] for k in ("ours_refresh", "ours_step", "afrt", "afrt_fd", "afrt_autograd")}
     nan_fd, n_pairs, n_conv, n_imgs, iters = 0, 0, 0, 0, []
+    n_outside, outside = 0, set()       # AFRT's images of points project() reports outside its model (not in the water)
     mem = 0
     for v, cam in enumerate(test_cams):
         o = ours(cam, means, dev)
@@ -163,6 +164,11 @@ def main():
         n_conv += int(done.sum())
         pairs = match(o, uv_a, done)
         n_pairs += len(pairs)
+        un = np.setdiff1d(np.flatnonzero(done.cpu().numpy()), pairs[:, 0])
+        if len(un):
+            out = un[rc.project(means[un].cpu().numpy(), cam, tg.TUBE).status == "outside_model"]
+            n_outside += len(out)
+            outside.update(out.tolist())
         Jr = o["J"].cpu().numpy()[pairs[:, 1]]
         norms = np.linalg.norm(Jr, axis=(1, 2))
         big.append(norms > np.percentile(norms, 95))
@@ -184,11 +190,14 @@ def main():
         err["autograd"].append(rel_err(Jg.cpu().numpy()[pairs[:, 0]], Jr))
         print(f"  view {v}: {len(pairs)} Gaussians compared", flush=True)
     big = np.concatenate(big)
-    say(f"  ours: {n_imgs} images of Gaussians over the views; AFRT converged for {n_conv} Gaussian-views, all of them "
-        f"one image of ours ({n_pairs} matched within 1e-3 px); slowest AFRT point per view took {min(iters)}-{max(iters)} "
-        f"iterations")
+    say(f"  ours: {n_imgs} images of Gaussians over the views; AFRT converged for {n_conv} Gaussian-views: {n_pairs} are "
+        f"an image of ours (matched within 1e-3 px), {n_outside} are of {len(outside)} Gaussians that project() reports "
+        f"as outside its model (not in the water), {n_conv - n_pairs - n_outside} are neither; slowest AFRT point per view "
+        f"took {min(iters)}-{max(iters)} iterations")
     say("\n1. The Jacobian d(uv)/dX against ours (relative error, Frobenius norm):")
-    summary = {"gaussians": int(len(means)), "views": len(test_cams), "pairs": int(n_pairs), "afrt_kmax": KMAX}
+    summary = {"gaussians": int(len(means)), "views": len(test_cams), "pairs": int(n_pairs), "afrt_kmax": KMAX,
+               "afrt_converged": int(n_conv), "afrt_outside_model": int(n_outside),
+               "gaussians_outside_model": len(outside)}
     for k, v in err.items():
         e = np.concatenate(v)
         fin = np.isfinite(e)

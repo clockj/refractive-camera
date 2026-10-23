@@ -143,3 +143,102 @@ ground truth rendered in 4 s
     afrt_pure it  3999  loss 0.0070  gaussians 22480  16512 s
   test PSNR 32.29 dB (water 30.97, near the wall 24.22), SSIM 0.982; opaque centres to the true surface: median 0.89 mm
   far views: PSNR 29.28 dB (water 27.64, near the wall 22.21), SSIM 0.966
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 3 s
+
+== afrt_pure
+  test PSNR 33.11 dB (water 31.36, near the wall 24.55), SSIM 0.985; opaque centres to the true surface: median 0.88 mm
+  far views: PSNR 30.09 dB (water 28.11, near the wall 22.55), SSIM 0.970
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 3 s
+
+== refractive
+    refractive it     0  loss 0.1707  gaussians 10000  2 s
+    refractive it   500  loss 0.0426  gaussians 6038  198 s
+    refractive it  1000  loss 0.0121  gaussians 15569  383 s
+    refractive it  1500  loss 0.0082  gaussians 18311  633 s
+    refractive it  2000  loss 0.0115  gaussians 19937  938 s
+    refractive it  2500  loss 0.0093  gaussians 20997  1244 s
+    refractive it  3000  loss 0.0079  gaussians 20997  1538 s
+    refractive it  3500  loss 0.0048  gaussians 20997  1836 s
+    refractive it  3999  loss 0.0059  gaussians 20997  2133 s
+  test PSNR 33.23 dB (water 31.48, near the wall 24.92), SSIM 0.985; opaque centres to the true surface: median 0.87 mm
+  far views: PSNR 30.10 dB (water 28.12, near the wall 22.98), SSIM 0.971
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 3 s
+
+== refractive_hybrid
+    refractive it     0  loss 0.1702  gaussians 10000  2 s
+    refractive it   500  loss 0.0428  gaussians 6109  210 s
+    refractive it  1000  loss 0.0119  gaussians 15562  424 s
+    refractive it  1500  loss 0.0082  gaussians 18636  692 s
+    refractive it  2000  loss 0.0117  gaussians 20184  985 s
+    refractive it  2500  loss 0.0093  gaussians 21231  1290 s
+    refractive it  3000  loss 0.0082  gaussians 21231  1597 s
+    refractive it  3500  loss 0.0050  gaussians 21231  1905 s
+    refractive it  3999  loss 0.0062  gaussians 21231  2214 s
+  test PSNR 33.18 dB (water 31.43, near the wall 24.69), SSIM 0.986; opaque centres to the true surface: median 0.88 mm
+  far views: PSNR 29.84 dB (water 27.86, near the wall 22.69), SSIM 0.970
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 3 s
+
+== afrt
+    afrt      it     0  loss 0.1704  gaussians 10000  5 s
+    afrt      it   500  loss 0.0435  gaussians 6104  262 s
+    afrt      it  1000  loss 0.0124  gaussians 15657  513 s
+    afrt      it  1500  loss 0.0082  gaussians 18646  841 s
+    afrt      it  2000  loss 0.0118  gaussians 20293  1196 s
+    afrt      it  2500  loss 0.0094  gaussians 21391  1566 s
+    afrt      it  3000  loss 0.0078  gaussians 21391  1929 s
+    afrt      it  3500  loss 0.0048  gaussians 21391  2281 s
+    afrt      it  3999  loss 0.0064  gaussians 21391  2624 s
+  test PSNR 33.09 dB (water 31.33, near the wall 24.46), SSIM 0.985; opaque centres to the true surface: median 0.86 mm
+  far views: PSNR 29.93 dB (water 27.95, near the wall 22.60), SSIM 0.969
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 3 s
+
+== afrt_hybrid
+    afrt      it     0  loss 0.1699  gaussians 10000  5 s
+    afrt      it   500  loss 0.0441  gaussians 6159  269 s
+    afrt      it  1000  loss 0.0129  gaussians 15675  534 s
+    afrt      it  1500  loss 0.0083  gaussians 18647  872 s
+    afrt      it  2000  loss 0.0124  gaussians 20310  1238 s
+    afrt      it  2500  loss 0.0096  gaussians 21323  1623 s
+    afrt      it  3000  loss 0.0081  gaussians 21323  2004 s
+    afrt      it  3500  loss 0.0051  gaussians 21323  2371 s
+    afrt      it  3999  loss 0.0067  gaussians 21323  2733 s
+  test PSNR 32.84 dB (water 31.08, near the wall 24.33), SSIM 0.984; opaque centres to the true surface: median 0.88 mm
+  far views: PSNR 29.65 dB (water 27.67, near the wall 22.44), SSIM 0.969
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 3 s
+
+== refractive_noisy
+  training poses as a robot reports them: {'centre_mm_rms': 1.804153017978773, 'rotation_deg_rms': 0.29372804446232204}
+    refractive it     0  loss 0.1702  gaussians 10000  2 s
+    refractive it   500  loss 0.0561  gaussians 6155  199 s
+    refractive it  1000  loss 0.0233  gaussians 16904  387 s
+    refractive it  1500  loss 0.0404  gaussians 22135  667 s
+    refractive it  2000  loss 0.0423  gaussians 26071  990 s
+    refractive it  2500  loss 0.0653  gaussians 29166  1357 s
+    refractive it  3000  loss 0.0340  gaussians 29166  1733 s
+    refractive it  3500  loss 0.0462  gaussians 29166  2111 s
+    refractive it  3999  loss 0.0331  gaussians 29166  2489 s
+  test PSNR 25.47 dB (water 23.67, near the wall 17.74), SSIM 0.914; opaque centres to the true surface: median 1.38 mm
+  far views: PSNR 24.45 dB (water 22.45, near the wall 17.33), SSIM 0.886
+Demo C: 48 training and 12 test views of 320 x 256 px; device cuda
+ground truth rendered in 3 s
+
+== refractive_refined
+  training poses as a robot reports them: {'centre_mm_rms': 1.804153017978773, 'rotation_deg_rms': 0.29372804446232204}
+    refractive it     0  loss 0.1702  gaussians 10000  2 s
+    refractive it   500  loss 0.0561  gaussians 6154  202 s
+    refractive it  1000  loss 0.0183  gaussians 16651  392 s
+    refractive it  1500  loss 0.0127  gaussians 21456  667 s
+    refractive it  2000  loss 0.0169  gaussians 24066  975 s
+    refractive it  2500  loss 0.0182  gaussians 25245  1310 s
+    refractive it  3000  loss 0.0105  gaussians 25245  1655 s
+    refractive it  3500  loss 0.0060  gaussians 25245  2000 s
+    refractive it  3999  loss 0.0068  gaussians 25245  2351 s
+  refined training poses: {'centre_mm_rms': 1.3912045433699725, 'rotation_deg_rms': 0.20662705746642845}
+  test PSNR 31.40 dB (water 29.63, near the wall 23.32), SSIM 0.978; opaque centres to the true surface: median 1.00 mm
+  far views: PSNR 29.13 dB (water 27.15, near the wall 21.81), SSIM 0.962

@@ -7,7 +7,10 @@
   * poses.png: training from a robot's poses, with and without pose refinement;
   * orbit.gif: a camera circling the tube, ground truth beside ours and the pinhole model.
 
-    python examples/demo_c_splatting/figures.py [--no-orbit]
+The models shown are those trained with the demo's linear footprint; --hybrid shows ours and the AFRT model trained
+with the hybrid one instead.
+
+    python examples/demo_c_splatting/figures.py [--no-orbit] [--hybrid]
 """
 import json
 import sys
@@ -28,7 +31,7 @@ import figstyle as fs  # noqa: E402
 LABELS = {"refractive": "refraction-aware (ours)", "afrt": "AFRT's images + our Jacobian", "pinhole": "pinhole",
           "pinhole_dist": "pinhole + distortion"}
 COLOURS = {k: fs.COLOR[k] for k in LABELS}
-KEY = {k: k for k in LABELS}            # the results shown for each camera: the hybrid footprint's, once trained
+KEY = {k: k for k in LABELS}            # the results shown for each camera: the linear footprint's (--hybrid: hybrid's)
 
 
 def hybrid(key):
@@ -370,7 +373,7 @@ def main():
     fs.use()
     res = json.loads((HERE / "results.json").read_text())
     for k in ("refractive", "afrt"):
-        if k + "_hybrid" in res and "--linear" not in sys.argv:
+        if k + "_hybrid" in res and "--hybrid" in sys.argv:
             KEY[k] = k + "_hybrid"
     kinds = [k for k in ("refractive", "afrt", "pinhole", "pinhole_dist") if KEY[k] in res]
     print("showing", {k: KEY[k] for k in kinds})
