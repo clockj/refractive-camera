@@ -87,7 +87,7 @@ twice in 4.5 %, and once otherwise; one AFRT start found the visible ball in eve
 
 | Perception | 3-D measurement error, median | 95th pct. | Kalman estimate, median | Kalman estimate, max |
 |---|---:|---:|---:|---:|
-| **ours, whole-ball fit (part 3)** | **0.03 mm** | **0.52 mm** | **0.12 mm** | 30 mm |
+| **ours, whole-ball fit (part 3)** | **0.03 mm** | **0.14 mm** | **0.11 mm** | 30 mm |
 | ours, blob centroids | 1.37 mm | 3.76 mm | 1.49 mm | 16.5 mm |
 | pinhole + AFRT | 1.42 mm | 3.72 mm | 1.50 mm | 16.5 mm |
 | pinhole + distortion | 15 mm | 60 mm | 15 mm | 169 mm |
@@ -117,10 +117,14 @@ model instead:
 - an image counts if its ray meets the surface from outside;
 - it is weighted by the area it covers in the image, from `image_jacobians`, and by how the detector weighs its colour;
 - the ball's centre is fitted so that the predicted blob centroids match the measured ones (Gauss-Newton, with the
-  centroids' analytic derivative).
+  centroids' analytic derivative);
+- with the two additions of part 4: an image counts toward the blob whose pixels it lands on (pixel assignment), and
+  each blob counts as well as its prediction can be trusted (reliability weighting).
 
 **Results** (`fold_zone_out.txt`): the fit measures the ball to **0.03 mm** at the median next to the wall, 40 times
-better than the centroids (1.37 mm for ours, 1.42 mm for AFRT; table above).
+better than the centroids (1.37 mm for ours, 1.42 mm for AFRT; table above), and to 0.14 mm at the 95th percentile.
+- Part 4's two additions sharpened its tail. Without them the 95th percentile was 0.52 mm, the largest error 4.9 mm,
+  and 5 % of the measurements were off by more than 0.5 mm; with them, 0.5 % (largest 1.75 mm).
 - It needs every image of the ball's surface (where the wall shows part of it twice, or clips it) and the Jacobian of
   each. One AFRT start gives one image per surface point and no derivative; with finite differences of its own
   iterations it can make the same fit, at about 18 times the cost (part 4).
@@ -133,6 +137,9 @@ so the camera is a stereo pair.
   ball as two blobs, the fit was accepted in 82 %, with an error of **0.50 mm** at the median (90th percentile
   1.7 mm), from one camera. The two rays' crossing alone is 17 mm off: the stretched blobs' centroids are not the
   images of the ball's centre, and two rays from one camera cross at a shallow angle.
+- This fit takes neither of part 4's additions. It starts from the rays' crossing, 15–25 mm off, and with one camera
+  either addition lets it settle more often on a wrong point that still matches both blobs: of its accepted fits, 12
+  were off by more than 5 mm without them, 20 with the weighting and 29 with both.
 - **Pinhole + AFRT:** one AFRT start knows one image, so the camera gives a ray, not a point.
 - **Pinhole + distortion:** two straight lines from one centre meet only there.
 
@@ -148,7 +155,7 @@ tip at the ball's centre.
 
 | Perception | How it locates the ball | The window's closed forms |
 |---|---|---|
-| **ours, whole ball** | part 3's fit: every image of the ball's surface by `project()`, weighted with `image_jacobians`, with two safeguards next to the caustic (below) | used |
+| **ours, whole ball** | part 3's fit: every image of the ball's surface by `project()`, weighted with `image_jacobians`, with pixel assignment and reliability weighting next to the caustic (below) | used |
 | AFRT alone, whole ball | the same fit with AFRT only: each surface point's image from one AFRT start, every derivative by finite differences of AFRT (`afrt_ball.py`) | none |
 | AFRT, blob centroids | parts 1–2's AFRT perception | none |
 | pinhole + distortion | parts 1–2 | none |
@@ -180,9 +187,9 @@ tip at the ball's centre.
   second copy of the ball (17 px of 430, 53 px from the main blob), exactly a part that AFRT does not predict, and
   that biased ours' fit in one trial.
 
-### Where the fit missed, and two safeguards
+### Where the fit missed: pixel assignment and reliability weighting
 
-Without the two safeguards below, ours missed one placement next to the wall (0.52 mm from the centre), and AFRT
+Without the two additions below, ours missed one placement next to the wall (0.52 mm from the centre), and AFRT
 alone missed two (0.86 and 1.53 mm).
 - **It was neither the projection nor a stuck fit.** The ball sat 137.7 mm from the axis, just past where the wall
   starts to hide points or show them twice (135 mm). Camera 2 saw it across the caustic: a fifth of the ball's
@@ -199,17 +206,17 @@ alone missed two (0.86 and 1.53 mm).
   from the main blob. The fit counted the sliver's predicted image into the main blob, the nearest one, and that
   shifted the blob's prediction by 0.5 px.
 
-Both whole-ball fits now take two safeguards (`ball_image.fit(..., weigh=True)`, given each blob's pixels by
+Both whole-ball fits now take two additions (`ball_image.fit(..., weigh=True)`, given each blob's pixels by
 `detect(..., regions=True)`):
-1. **Each blob counts as much as it can be predicted.**
+1. **Reliability weighting: each blob counts as much as it can be predicted.**
    - It is predicted from two sets of 400 surface points, the second a rotation of the first.
    - Their mean is the prediction, and half their difference, s, is its uncertainty.
    - The blob's residual is weighted by 1 / √(0.1² + s²) per pixel.
 
    At the missed placement's true centre the two sets differ by 2.8 px for camera 2, against 0.002 and 0.014 px for
    cameras 0 and 1, so camera 2 counts for little.
-2. **A predicted image counts toward a blob only if it lands on it,** within 3 px of the blob's pixels. A piece of the
-   ball the detector missed then biases no blob.
+2. **Pixel assignment: a predicted image counts toward a blob only if it lands on it,** within 3 px of the blob's
+   pixels. A piece of the ball the detector missed then biases no blob.
 
 | Placement next to the wall | ours, before → after | AFRT alone, before → after |
 |---|---:|---:|
@@ -217,7 +224,8 @@ Both whole-ball fits now take two safeguards (`ball_image.fit(..., weigh=True)`,
 | a camera sees the ball's centre twice, 138.6 mm | 0.301 → 0.023 mm | 0.862 → 0.176 mm |
 | the undetected sliver, 138.7 mm | 0.159 → 0.015 mm | 0.016 → 0.015 mm |
 
-The safeguards double the work per estimate. Parts 2–3 run the fit without them.
+The weighting doubles the work per estimate. Part 3's three-camera tracking takes both additions too; its one-camera
+fit takes neither (part 3).
 
 **Limits:**
 - the frames are synthetic, with no noise, blur or reflections;

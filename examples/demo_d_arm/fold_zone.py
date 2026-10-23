@@ -11,8 +11,13 @@ its Kalman filter.  There is no arm: what is measured is what each perception kn
   * part 2: ours, pinhole + AFRT and pinhole + distortion, each blob's centroid taken as the image of the ball's centre;
   * part 3, the whole ball: ours fits the ball's centre to its blobs, predicted from every image of its surface and
     the Jacobian (ball_image.py).  And where one camera shows the ball twice, that camera alone locates it.
+The three-camera fit takes part 4's two additions: an image of the surface counts toward the blob whose pixels it lands
+on, or none (pixel assignment), and each blob counts as well as two sets of surface points agree on its prediction
+(reliability weighting; `ball_image.fit`, weigh=True).  The one-camera fit takes neither: it starts from the two rays'
+crossing, 15-25 mm from the ball, and with one camera either addition lets it settle, more often, on a wrong point
+that matches both blobs.
 
-    python examples/demo_d_arm/fold_zone.py --workers 6      # about 30 minutes
+    python examples/demo_d_arm/fold_zone.py --workers 6      # about 45 minutes
 """
 import json
 import sys
@@ -37,16 +42,19 @@ LABELS = {"refractive": "ours, blob centroids", "refractive_ball": "ours, whole 
 
 
 class RefractiveBall(D.Refractive):
-    """Ours, fitting the ball's centre to its blobs (ball_image.fit) from the centroid triangulation."""
+    """Ours, fitting the ball's centre to its blobs (ball_image.fit) from the centroid triangulation.  `regions` holds
+    each camera's blobs' pixels for the frame being measured."""
     name = "refractive_ball"
+    regions = None
 
     def locate(self, blobs, pred, gate=40.0):
         X0 = super().locate(blobs, pred, gate)
         if X0 is None:
             return None
-        obs = [(c, ball_image.blobs_near(X0, c, D.TANK, b)) for c, b in zip(self.cams, blobs)]
-        obs = [(c, b) for c, b in obs if len(b)]
-        X, rms = ball_image.fit(obs, X0, D.TANK, D.BALL_RGB)
+        obs = [(c, *ball_image.blobs_near(X0, c, D.TANK, b, regions=reg))
+               for c, b, reg in zip(self.cams, blobs, self.regions)]
+        obs = [o for o in obs if len(o[1])]
+        X, rms = ball_image.fit(obs, X0, D.TANK, D.BALL_RGB, weigh=True)
         return X if np.all(np.isfinite(X)) and rms < 2.0 else X0
 
 
@@ -103,7 +111,10 @@ def track(args):
         t = k * D.DT_CTRL
         ball = at(t)
         objs = D.inside_objects(ball, [])
-        blobs = [D.detect(c, objs) for c in cams]
+        found = [D.detect(c, objs, regions=True) for c in cams]
+        blobs, regions = [b for b, _ in found], [p for _, p in found]
+        if kind == "refractive_ball":
+            per.regions = regions
         pred = kf.predict(D.DT_CTRL)
         X = D.measure(per, blobs, pred, gap)
         gap = 0 if X is not None else gap + 1
@@ -166,18 +177,19 @@ def summarise(res, say):
     one = [o for r in res if r["kind"] == "refractive_ball" for x in r["rows"] for o in x["one_camera"]]
     raw = np.array([o[1] if o[1] is not None else np.nan for o in one], float)
     fit = np.array([o[2] if o[2] is not None else np.nan for o in one], float)
+    acc = fit[np.isfinite(fit)]
     say(f"\nOne camera alone, in the {len(one)} camera-frames where it shows the ball as two blobs:")
     say(f"  the two rays' crossing: a point that explains both blobs in {100 * np.mean(np.isfinite(raw)):.0f} %, error "
         f"median {np.nanmedian(raw):.1f} mm")
     say(f"  then the whole-ball fit: accepted in {100 * np.mean(np.isfinite(fit)):.0f} %, error median "
-        f"{np.nanmedian(fit):.2f} mm, 90th pct {np.nanpercentile(fit, 90):.2f} mm; within 1 mm "
-        f"{100 * np.nanmean(fit < 1):.0f} % of those")
+        f"{np.nanmedian(fit):.2f} mm, 90th pct {np.nanpercentile(fit, 90):.2f} mm; of those, within 1 mm "
+        f"{100 * np.mean(acc < 1):.0f} %, off by more than 5 mm {int(np.sum(acc > 5))}")
     say("  pinhole + AFRT: one image per camera, so one ray, not a point; pinhole + distortion: two straight lines "
         "through the camera's centre, which meet only there")
     out["one_camera"] = {"camera_frames": len(one), "raw_accepted": float(np.mean(np.isfinite(raw))),
                          "raw_median_mm": float(np.nanmedian(raw)), "fit_accepted": float(np.mean(np.isfinite(fit))),
                          "fit_median_mm": float(np.nanmedian(fit)), "fit_p90_mm": float(np.nanpercentile(fit, 90)),
-                         "fit_within_1mm": float(np.nanmean(fit < 1))}
+                         "fit_within_1mm": float(np.mean(acc < 1)), "fit_over_5mm": int(np.sum(acc > 5))}
     return out
 
 
