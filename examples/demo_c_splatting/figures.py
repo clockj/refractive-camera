@@ -46,7 +46,7 @@ def load(kind, dev):
 def render_with(kind, g, cam, dev, fit=None, footprint="linear"):
     bg = torch.tensor(D.BG, device=dev, dtype=torch.float32)
     if kind in ("refractive", "afrt"):
-        sc = (splat.RefractiveSplatCamera if kind == "refractive" else splat.AFRTSplatCamera)(cam, tg.TUBE, dev)
+        sc = D.splat_camera(kind, cam, dev, D.parser().parse_args([]))      # the demo's defaults: the water mask
     else:
         sc = splat.PinholeSplatCamera(fit if fit is not None else cam, dev)
     sc.refresh(g.means)

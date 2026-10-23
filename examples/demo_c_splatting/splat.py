@@ -11,12 +11,13 @@ not at all, so the projection returns a list of "splats", each tagged with its G
   implicit-function derivative; J is the analytic Jacobian of `refractive_camera.jacobian`.
 * ``PinholeSplatCamera``: straight rays, with OpenCV distortion if given.  The ordinary 3D Gaussian splatting camera.
 
-Two options of the refractive cameras, off by default:
+Two options of the refractive cameras, off here and on in the demo (demo_c.py):
 * ``mask`` (H, W): the pixels whose ray reaches the water (`water_mask`).  A Gaussian in the water can light no other
   pixel, so the rasterizer draws nothing there.  Next to the wall the linear footprint of an image at the water's edge
   would otherwise spill onto pixels that see only the background.
-* ``repair`` (ours): an image that Newton's method loses at a step is not skipped until the view's next search; its
-  Gaussian is searched again by `project()` at once.
+* ``repair``: an image that Newton's method loses at a step is not skipped until the view's next search; its Gaussian
+  is searched again at once.  Ours searches by `project()`, at the camera's current pose when the pose is learned; the
+  AFRT model runs one AFRT start, so it still knows at most the one image AFRT finds.
 
 The rasterizer is tile-based and differentiable through autograd; it needs no compiled CUDA.
 """
@@ -400,6 +401,11 @@ class PoseSplatCamera(RefractiveSplatCamera):
         self.cam = self.camera()
         super().refresh(means)
 
+    def _search_again(self, means, gs):
+        """As the fixed camera's, at the current pose: the pose has moved since the view's last search."""
+        self.cam = self.camera()
+        super()._search_again(means, gs)
+
     def project(self, means, newton_iters=2):
         R, c = self.pose()
         P = (c - self.a) @ self.Q
@@ -438,26 +444,41 @@ class AFRTSplatCamera(RefractiveSplatCamera):
     """Pinhole + AFRT: the same splat camera, but each Gaussian's images come from one AFRT start (Belden 2013)
     instead of project(): at most one image, and none where the iteration fails.  Between refreshes the image is
     followed by the same Newton steps, and its footprint is the same analytic Jacobian, so the two cameras differ only
-    in which images they know."""
+    in which images they know.  Its repair runs one AFRT start again for each Gaussian whose image Newton's method
+    loses."""
 
     _pool = None
 
     def refresh(self, means):
+        g, far, lam, cz = self._afrt(means.detach().to(DT).cpu().numpy())
+        dev = self.device
+        self.g = torch.tensor(g, dtype=torch.long, device=dev)
+        self.far = torch.tensor(far, dtype=torch.bool, device=dev)
+        self.lam = torch.tensor(lam, dtype=DT, device=dev)
+        self.cz = torch.tensor(cz, dtype=DT, device=dev)
+
+    def _search_again(self, means, gs):
+        """One AFRT start again for each of the Gaussians gs, in place of the image tracked for it."""
+        g, far, lam, cz = self._afrt(means.detach().to(DT)[gs].cpu().numpy())
+        dev = self.device
+        old = torch.isin(self.g, gs)
+        self.g = torch.cat([self.g[~old], gs[torch.tensor(g, dtype=torch.long, device=dev)]])
+        self.far = torch.cat([self.far[~old], torch.tensor(far, dtype=torch.bool, device=dev)])
+        self.lam = torch.cat([self.lam[~old], torch.tensor(lam, dtype=DT, device=dev)])
+        self.cz = torch.cat([self.cz[~old], torch.tensor(cz, dtype=DT, device=dev)])
+
+    def _afrt(self, X):
+        """The image one AFRT start finds for each point of X (M, 3), where it reaches the point and lands within 64 px
+        of the sensor: (row of X, on the far branch, Lambda, C_z), as arrays."""
         from concurrent.futures import ProcessPoolExecutor
         if AFRTSplatCamera._pool is None:
             AFRTSplatCamera._pool = ProcessPoolExecutor(self.threads, initializer=_afrt_init, initargs=(self.window,))
-        X = means.detach().to(DT).cpu().numpy()
         centre = self.cam.center
         dirs = list(AFRTSplatCamera._pool.map(_afrt_ray, [(centre, x) for x in X], chunksize=512))
         got = np.array([d is not None for d in dirs])
         g = np.flatnonzero(got)
-        dev = self.device
         if not len(g):
-            self.g = torch.zeros(0, dtype=torch.long, device=dev)
-            self.far = torch.zeros(0, dtype=torch.bool, device=dev)
-            self.lam = torch.zeros(0, dtype=DT, device=dev)
-            self.cz = torch.zeros(0, dtype=DT, device=dev)
-            return
+            return g, np.zeros(0, dtype=bool), np.zeros(0), np.zeros(0)
         D = np.array([dirs[i] for i in g])
         w = self.window
         P = w.to_local(centre)
@@ -473,10 +494,7 @@ class AFRTSplatCamera(RefractiveSplatCamera):
         W, H = self.size
         m = 64.0
         keep = front & np.isfinite(uv).all(1) & (uv[:, 0] > -m) & (uv[:, 0] < W + m) & (uv[:, 1] > -m) & (uv[:, 1] < H + m)
-        self.g = torch.tensor(g[keep], dtype=torch.long, device=dev)
-        self.far = torch.tensor((s_x > s_star)[keep], device=dev)
-        self.lam = torch.tensor(lam[keep], dtype=DT, device=dev)
-        self.cz = torch.tensor(cz[keep], dtype=DT, device=dev)
+        return g[keep], (s_x > s_star)[keep], lam[keep], cz[keep]
 
 
 class AFRTPureSplatCamera:

@@ -10,6 +10,9 @@ Two more models train ours from the poses a robot would report, off by about 2 m
   * refractive_noisy: the poses as reported;
   * refractive_refined: the poses refined with the Gaussians, through the analytic derivative of the projection in
     the camera's pose (splat.PoseSplatCamera).
+Each camera that models the tube draws in training the images it is scored on, and lights only the pixels whose ray
+reaches the water: --repair and --water-mask, both on by default.  --no-repair and --no-water-mask train as the demo
+first did; their results are named with _norepair and _nomask.
 
     python examples/demo_c_splatting/demo_c.py              # about an hour on a small GPU
     python examples/demo_c_splatting/demo_c.py --iters 1500 # a quick look
@@ -138,8 +141,9 @@ REFRACTIVE = ("refractive", "afrt", "afrt_pure")      # the cameras that model t
 
 def splat_camera(kind, cam, dev, args, refine_poses=False):
     """The splat camera of a model: ours, AFRT's images with our Jacobian, AFRT on its own, or a pinhole.  With
-    --water-mask a camera that models the tube lights only the pixels whose ray reaches the water; with --repair ours
-    searches a Gaussian again at once when Newton's method loses one of its images."""
+    --water-mask a camera that models the tube lights only the pixels whose ray reaches the water.  With --repair ours
+    and the AFRT model search a Gaussian again at once when Newton's method loses one of its images: ours by project(),
+    the AFRT model by one AFRT start."""
     if refine_poses:
         sc = splat.PoseSplatCamera(cam, tg.TUBE, dev, threads=args.threads)
     elif kind in REFRACTIVE:
@@ -150,9 +154,17 @@ def splat_camera(kind, cam, dev, args, refine_poses=False):
         return splat.PinholeSplatCamera(cam, dev)
     if getattr(args, "water_mask", False):
         sc.mask = torch.tensor(splat.water_mask(cam, tg.TUBE), device=dev)
-    if getattr(args, "repair", False) and kind == "refractive":
+    if getattr(args, "repair", False) and kind in ("refractive", "afrt"):
         sc.repair = True
     return sc
+
+
+def result_key(kind, args):
+    """The name of a model's results and files: its kind, then _hybrid, _nomask and _norepair where they apply."""
+    key = kind + ("_hybrid" if args.footprint == "hybrid" and kind in ("refractive", "afrt") else "")
+    key += "_nomask" if not args.water_mask and kind not in ("pinhole", "pinhole_dist") else ""
+    key += "_norepair" if not args.repair and kind not in ("pinhole", "pinhole_dist", "afrt_pure") else ""
+    return key
 
 
 def draw(gauss, camera, bg, kind, args):
@@ -324,7 +336,8 @@ def evaluate(kind, gauss, cams, gt, water, wall, dev, args, tag):
                 "within_1mm": float(np.mean(sd < 1.0))}}
 
 
-def main():
+def parser():
+    """The demo's options; parser().parse_args([]) gives its defaults, for the scripts that draw its models."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--iters", type=int, default=4000)
     ap.add_argument("--init", type=int, default=10000)
@@ -341,12 +354,17 @@ def main():
     ap.add_argument("--pose-lr-pos", type=float, default=1e-4, help="m per step, refined poses")
     ap.add_argument("--footprint", default="linear", choices=["linear", "hybrid"],
                     help="hybrid: the unscented footprint where the linear one is wider than 6 px")
-    ap.add_argument("--water-mask", action="store_true",
+    ap.add_argument("--water-mask", action=argparse.BooleanOptionalAction, default=True,
                     help="the tube's cameras light only the pixels whose ray reaches the water")
-    ap.add_argument("--repair", action="store_true",
-                    help="ours searches a Gaussian again at once when Newton's method loses one of its images")
+    ap.add_argument("--repair", action=argparse.BooleanOptionalAction, default=True,
+                    help="ours and the AFRT model search a Gaussian again at once when Newton's method loses one of "
+                         "its images")
     ap.add_argument("--eval-only", action="store_true", help="evaluate the trained models in _cache/ again")
-    args = ap.parse_args()
+    return ap
+
+
+def main():
+    args = parser().parse_args()
     CACHE.mkdir(exist_ok=True)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     train_cams, test_cams, far_cams = views()
@@ -360,9 +378,7 @@ def main():
     rpath = HERE / "results.json"
     results = json.loads(rpath.read_text()) if rpath.exists() else {}
     for kind in args.models.split(","):
-        key = kind + ("_hybrid" if args.footprint == "hybrid" and kind in ("refractive", "afrt") else "")
-        key += "_mask" if args.water_mask and kind not in ("pinhole", "pinhole_dist") else ""
-        key += "_repair" if args.repair and kind in ("refractive", "refractive_noisy", "refractive_refined") else ""
+        key = result_key(kind, args)
         say(f"\n== {key}")
         tr, te, tf = train_cams, test_cams, far_cams
         model_kind = kind if kind in REFRACTIVE else "pinhole"
